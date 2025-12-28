@@ -1,0 +1,33 @@
+# =====================
+# CRM FLAME API - Docker Ignore
+# =====================
+
+# Git
+.git
+.gitignore
+.github
+
+# Build outputs (rebuild in container)
+target
+*.jar
+*.class
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# Environment
+.env
+.env.*

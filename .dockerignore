@@ -1,0 +1,47 @@
+# =====================
+# CRM FLAME - Docker Ignore
+# =====================
+
+# Git
+.git
+.gitignore
+
+# Dependencies (rebuild in container)
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+build
+dist
+target
+
+# Environment files (use docker-compose env)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Tests
+coverage
+.nyc_output

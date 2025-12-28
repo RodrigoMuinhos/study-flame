@@ -1,0 +1,311 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@custom-variant theme-fire-dark (&:is(.theme-fire-dark *));
+@custom-variant theme-fire-light (&:is(.theme-fire-light *));
+@custom-variant theme-ember (&:is(.theme-ember *));
+
+/* Tema Padrão - Fogo Intenso (Escuro) */
+.theme-fire-dark {
+  --background: #1a0f0a;
+  --foreground: #ffd4b8;
+  --card: #2a1510;
+  --card-foreground: #ffd4b8;
+  --popover: #2a1510;
+  --popover-foreground: #ffd4b8;
+  --primary: #ff6b35;
+  --primary-foreground: #ffffff;
+  --secondary: #3a251a;
+  --secondary-foreground: #ffd4b8;
+  --muted: #3a251a;
+  --muted-foreground: #ffb088;
+  --accent: #4a3020;
+  --accent-foreground: #ffd4b8;
+  --destructive: #e63946;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 107, 53, 0.2);
+  --input: #2a1510;
+  --ring: #ff6b35;
+  --chart-1: #ff6b35;
+  --chart-2: #f7931e;
+  --chart-3: #ffc837;
+  --chart-4: #ff8c5a;
+  --chart-5: #e63946;
+  --sidebar: #1a0f0a;
+  --sidebar-foreground: #ffd4b8;
+  --sidebar-primary: #ff6b35;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a1510;
+  --sidebar-accent-foreground: #ffd4b8;
+  --sidebar-border: rgba(255, 107, 53, 0.2);
+  --sidebar-ring: #ff6b35;
+}
+
+/* Tema Chama Clara (Claro) */
+.theme-fire-light {
+  --background: #fff5f0;
+  --foreground: #5a2817;
+  --card: #ffffff;
+  --card-foreground: #5a2817;
+  --popover: #ffffff;
+  --popover-foreground: #5a2817;
+  --primary: #ff8c5a;
+  --primary-foreground: #ffffff;
+  --secondary: #ffe8dc;
+  --secondary-foreground: #5a2817;
+  --muted: #ffeee5;
+  --muted-foreground: #8a6b5e;
+  --accent: #ffd4b8;
+  --accent-foreground: #5a2817;
+  --destructive: #e63946;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 140, 90, 0.2);
+  --input: transparent;
+  --input-background: #fffaf7;
+  --ring: #ff8c5a;
+  --chart-1: #ff8c5a;
+  --chart-2: #f7931e;
+  --chart-3: #ffc837;
+  --chart-4: #ff6b35;
+  --chart-5: #ff9f1c;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #5a2817;
+  --sidebar-primary: #ff8c5a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff5f0;
+  --sidebar-accent-foreground: #5a2817;
+  --sidebar-border: rgba(255, 140, 90, 0.2);
+  --sidebar-ring: #ff8c5a;
+}
+
+/* Tema Brasa Ardente (Escuro) */
+.theme-ember {
+  --background: #2a1510;
+  --foreground: #ffcdb2;
+  --card: #3a201a;
+  --card-foreground: #ffcdb2;
+  --popover: #3a201a;
+  --popover-foreground: #ffcdb2;
+  --primary: #e63946;
+  --primary-foreground: #ffffff;
+  --secondary: #4a2820;
+  --secondary-foreground: #ffcdb2;
+  --muted: #4a2820;
+  --muted-foreground: #ffb088;
+  --accent: #5a3025;
+  --accent-foreground: #ffcdb2;
+  --destructive: #dc2f02;
+  --destructive-foreground: #ffffff;
+  --border: rgba(230, 57, 70, 0.2);
+  --input: #3a201a;
+  --ring: #e63946;
+  --chart-1: #e63946;
+  --chart-2: #ff9f1c;
+  --chart-3: #ffc837;
+  --chart-4: #ff6b35;
+  --chart-5: #dc2f02;
+  --sidebar: #2a1510;
+  --sidebar-foreground: #ffcdb2;
+  --sidebar-primary: #e63946;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a201a;
+  --sidebar-accent-foreground: #ffcdb2;
+  --sidebar-border: rgba(230, 57, 70, 0.2);
+  --sidebar-ring: #e63946;
+}
+
+:root {
+  --font-size: 16px;
+  --radius: 0.625rem;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --secondary: #ffe8e0;
+  --secondary-foreground: #6b4539;
+  --muted: #fff0eb;
+  --muted-foreground: #c89487;
+  --accent: #ffd9cd;
+  --accent-foreground: #6b4539;
+  --destructive: #d97b6c;
+  --destructive-foreground: #ffffff;
+  --border: rgba(232, 165, 151, 0.15);
+  --input: transparent;
+  --input-background: #fffaf8;
+  --switch-background: #f5cec3;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #e8a597;
+  --chart-1: #f3c0b4;
+  --chart-2: #f5d1c7;
+  --chart-3: #edd3c8;
+  --chart-4: #f7b9a8;
+  --chart-5: #eaae9e;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #6b4539;
+  --sidebar-primary: #e8a597;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff5f2;
+  --sidebar-accent-foreground: #6b4539;
+  --sidebar-border: rgba(232, 165, 151, 0.15);
+  --sidebar-ring: #e8a597;
+}
+
+/* Tema Lavanda Noturna (Escuro) */
+.theme-night-lavender {
+  --background: #1e1a2e;
+  --foreground: #e8e3f5;
+  --card: #2a2540;
+  --card-foreground: #e8e3f5;
+  --popover: #2a2540;
+  --popover-foreground: #e8e3f5;
+  --primary: #b4a5d9;
+  --primary-foreground: #1e1a2e;
+  --secondary: #362f4a;
+  --secondary-foreground: #e8e3f5;
+  --muted: #3d3558;
+  --muted-foreground: #c4b8e0;
+  --accent: #443d5c;
+  --accent-foreground: #e8e3f5;
+  --destructive: #d88fa6;
+  --destructive-foreground: #ffffff;
+  --border: rgba(180, 165, 217, 0.15);
+  --input: rgba(180, 165, 217, 0.1);
+  --ring: #b4a5d9;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #9d8fc9;
+  --chart-2: #8b7ab8;
+  --chart-3: #a999ce;
+  --chart-4: #b5a3d8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: 1rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label,
+  button,
+  input {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  button {
+    font-weight: var(--font-weight-medium);
+  }
+
+  input {
+    font-weight: var(--font-weight-normal);
+  }
+}
+
+@layer utilities {
+  /* Força textos "brancos" a usarem a cor do tema */
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white) {
+    color: var(--foreground) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/90) {
+    color: color-mix(in srgb, var(--foreground) 90%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/80) {
+    color: color-mix(in srgb, var(--foreground) 80%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/70) {
+    color: color-mix(in srgb, var(--foreground) 70%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/60) {
+    color: color-mix(in srgb, var(--foreground) 60%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/50) {
+    color: color-mix(in srgb, var(--foreground) 50%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/40) {
+    color: color-mix(in srgb, var(--foreground) 40%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/30) {
+    color: color-mix(in srgb, var(--foreground) 30%, transparent) !important;
+  }
+
+  :is(.theme-fire-dark, .theme-fire-light, .theme-ember) :is(.text-white\/20) {
+    color: color-mix(in srgb, var(--foreground) 20%, transparent) !important;
+  }
+}

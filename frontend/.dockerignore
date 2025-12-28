@@ -1,0 +1,48 @@
+# =====================
+# CRM FLAME Frontend - Docker Ignore
+# =====================
+
+# Git
+.git
+.gitignore
+
+# Dependencies (rebuild in container)
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+out
+build
+dist
+
+# Environment (use build args)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Tests
+coverage
+.nyc_output
+
+# Documentation
+*.md
+!README.md
+
+# Scripts
+scripts/
