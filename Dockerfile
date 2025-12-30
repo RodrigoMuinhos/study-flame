@@ -1,23 +1,15 @@
-# ===========================================
-# CRM FLAME API - Railway Dockerfile
-# ===========================================
-# Multi-stage build for Spring Boot Application
-# Optimized for Railway deployment
-
-# Stage 1: Build
+# Simple Build Stage
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
-
-WORKDIR /app
-
-# Copy pom and download dependencies
-COPY api/pom.xml ./pom.xml
-RUN mvn dependency:go-offline -B
-
-# Copy source and build
-COPY api/src ./src
+WORKDIR /workspace
+COPY api/ .
 RUN mvn clean package -DskipTests -B
 
-# Stage 2: Runtime
+# Runtime Stage  
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /workspace/target/*.jar app.jar
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar"]
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
