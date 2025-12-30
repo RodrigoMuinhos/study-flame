@@ -8,7 +8,7 @@ export interface ExamResult {
   passed: boolean;
   percentage: number;
   questionsReview: Array<{
-    id: number;
+    id: string | number;
     question: string;
     wasCorrect: boolean;
     selectedAnswer: string;
@@ -18,7 +18,7 @@ export interface ExamResult {
 
 interface ExamResultsScreenProps {
   result: ExamResult;
-  onReviewQuestion: (questionId: number) => void;
+  onReviewQuestion: (questionId: string | number) => void;
   onRetakeExam: () => void;
   onBackToHome: () => void;
 }

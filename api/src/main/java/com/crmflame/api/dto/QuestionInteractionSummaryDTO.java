@@ -1,4 +1,4 @@
-nao deve ter nadapackage com.crmflame.api.dto;
+package com.crmflame.api.dto;
 
 public class QuestionInteractionSummaryDTO {
     private String questionId;

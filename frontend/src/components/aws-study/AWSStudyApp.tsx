@@ -191,6 +191,7 @@ export function AWSStudyApp() {
     return (
       <MainLayout currentView="official-exam" onNavigate={handleNavigate}>
         <OfficialExamScreen
+          onStart={() => {}}
           onBack={() => setCurrentScreen('home')}
         />
       </MainLayout>

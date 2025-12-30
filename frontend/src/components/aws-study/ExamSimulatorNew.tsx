@@ -114,7 +114,12 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
   }
 
   const totalQuestions = shuffledQuestions.length;
-  const answeredQuestions = new Set(Object.keys(answers));
+  const answeredQuestions = new Set(
+    Object.keys(answers).map(id => {
+      const idx = shuffledQuestions.findIndex(q => q.id === id);
+      return idx !== -1 ? idx + 1 : -1;
+    }).filter(n => n > 0)
+  );
   const currentQuestionData = shuffledQuestions[currentQuestionIndex];
   const currentQuestion = currentQuestionIndex + 1; // 1-based para display
 
@@ -269,9 +274,9 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
     setIsFinished(true);
   };
 
-  const handleReviewQuestion = (questionId: string) => {
+  const handleReviewQuestion = (questionId: string | number) => {
     setReviewMode(true);
-    const index = shuffledQuestions.findIndex(q => q.id === questionId);
+    const index = shuffledQuestions.findIndex(q => q.id === String(questionId));
     if (index !== -1) {
       setCurrentQuestionIndex(index);
     }
@@ -326,12 +331,6 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
             <p className="text-sm text-gray-600">
               {config.questionsCount} questões • {config.timerEnabled ? `${config.timerMinutes}min` : 'Sem limite'}
             </p>
-            {config.focusOnWeakness && (
-              <div className="mt-2 flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
-                <TrendingUp size={12} />
-                <span>Modo Inteligente</span>
-              </div>
-            )}
           </div>
 
           {/* Timer */}

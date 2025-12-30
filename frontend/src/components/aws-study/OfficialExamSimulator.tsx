@@ -29,16 +29,11 @@ function convertToTypeQuestion(q: BankExamQuestion): TypeExamQuestion {
     .slice(0, 4);
 
   return {
-    id: q.id,
+    id: String(q.id),
     question: q.question,
-    context: `Domínio: ${q.domain} | Dificuldade: ${q.difficulty}`,
-    options: validOptions.map((text: string, index: number) => ({
-      label: String.fromCharCode(65 + index), // A, B, C, D
-      text: text.toString()
-    })),
+    options: validOptions.map(text => text.toString()),
     correctAnswer: normalizeCorrect(),
     explanation: q.explanation,
-    relatedService: String(q.domain ?? 'general'),
     category: String(q.domain ?? 'general')
   };
 }
@@ -233,8 +228,8 @@ export function OfficialExamSimulator({ examQuestions, timeLimit, onBack }: Offi
     setIsFinished(true);
   };
 
-  const handleReviewQuestion = (questionId: number) => {
-    const index = shuffledQuestions.findIndex(q => q.id === questionId);
+  const handleReviewQuestion = (questionId: string | number) => {
+    const index = shuffledQuestions.findIndex(q => String(q.id) === String(questionId));
     if (index !== -1) {
       setCurrentQuestionIndex(index);
       setIsFinished(false);

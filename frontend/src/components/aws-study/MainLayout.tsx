@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Home, Target, BookOpen, GraduationCap, Trophy, BarChart3, Menu, Settings, TrendingUp, Flame, Star, Calendar, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { StatisticsManager } from '@/utils/statisticsManager';
+import { UserStats } from '@/types/aws-study';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -11,18 +12,18 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, currentView, onNavigate }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<UserStats>({
     level: 1,
     totalXP: 0,
     currentStreak: 0,
     longestStreak: 0,
     totalExams: 0,
     totalQuestions: 0,
-    correctAnswers: 0,
+    totalCorrect: 0,
     overallAccuracy: 0,
     badges: [],
     examHistory: [],
-    topicProgress: {}
+    categoryStats: {}
   });
   const [mounted, setMounted] = useState(false);
   const router = useRouter();

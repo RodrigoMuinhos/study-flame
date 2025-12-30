@@ -23,7 +23,7 @@ function shuffleArray<T>(array: T[]): T[] {
 export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulatorProps) {
   const [shuffledQuestions] = useState<ExamQuestion[]>(() => shuffleArray(questions));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [examResult, setExamResult] = useState<ExamResult | null>(null);
   const [startTime] = useState(Date.now());
@@ -182,6 +182,7 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
         <div className="mb-6">
           <ExamQuestionCard
             question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
             selectedAnswer={selectedAnswer}
             onAnswerSelect={handleAnswerSelect}
             showResults={false}

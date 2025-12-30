@@ -1,14 +1,12 @@
 package com.crmflame.api.repository;
 
-import javaautilsList
-
-import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-comcrmflameapi.model.ExamQuestion
 import com.crmflame.api.model.ExamQuestion;
 
 @Repository

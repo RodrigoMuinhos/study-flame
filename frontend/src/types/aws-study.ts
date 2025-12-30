@@ -79,7 +79,7 @@ export interface ExamHistory {
   correctAnswers: number;
   passed: boolean;
   timeSpent: number;
-  questionsCount: 10 | 20 | 40 | 65;
+  questionsCount: 10 | 20 | 30 | 40 | 50 | 65;
   timerEnabled: boolean;
   categoryPerformance?: Record<string, { correct: number; total: number }>;
 }

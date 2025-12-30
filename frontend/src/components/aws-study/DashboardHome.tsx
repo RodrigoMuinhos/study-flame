@@ -41,9 +41,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
   }, []);
   
   const stats = mounted ? StatisticsManager.getStats() : {
+    totalExams: 0,
     totalQuestions: 0,
+    totalCorrect: 0,
     correctAnswers: 0,
     currentStreak: 0,
+    longestStreak: 0,
     level: 1,
     totalXP: 0,
     overallAccuracy: 0,
@@ -124,9 +127,11 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
       <AWSBenefitsCards />
 
       {/* Última Prova - Seção destacada */}
-      {hasLastExam && lastExam && lastExam.blueprint?.questionIds && (() => {
-        const totalQuestions = lastExam.blueprint.questionIds.length;
-        const answeredCount = lastExam.answers?.filter(a => a !== null && a !== undefined).length || 0;
+      {hasLastExam && lastExam && lastExam.blueprint && (() => {
+        const totalQuestions = lastExam.blueprint.length;
+        const answeredCount = lastExam.answers 
+          ? Object.values(lastExam.answers).filter(a => a !== null && a !== undefined).length 
+          : 0;
         
         const score = lastExam.finishedAt && stats.examHistory.length > 0 
           ? Math.round((stats.examHistory[stats.examHistory.length - 1].correctAnswers / stats.examHistory[stats.examHistory.length - 1].totalQuestions) * 100)

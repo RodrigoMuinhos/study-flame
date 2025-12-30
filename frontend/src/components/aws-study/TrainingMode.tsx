@@ -85,7 +85,7 @@ export function TrainingMode({ topicId, onBack }: TrainingModeProps) {
             correctAnswer: q.correctAnswer, // Mantém o texto da resposta correta
             explanation: q.explanation || '',
             relatedService: q.domain || topicId,
-            topic: q.topic || topicId
+            topic: (q as any).topic || q.domain || topicId
           };
         });
         
@@ -219,7 +219,7 @@ export function TrainingMode({ topicId, onBack }: TrainingModeProps) {
           correctAnswer: q.correctAnswer,
           explanation: q.explanation || '',
           relatedService: q.domain || topicId,
-          topic: q.topic || topicId
+          topic: (q as any).topic || q.domain || topicId
         };
       });
       setQuestions(trainingQs);

@@ -6,7 +6,7 @@ import { StatisticsManager } from '@/utils/statisticsManager';
 interface ExamResultsScreenNewProps {
   result: ExamResult;
   questions: ExamQuestion[];
-  onReviewQuestion: (questionId: number) => void;
+  onReviewQuestion: (questionId: string | number) => void;
   onRetakeExam: () => void;
   onBackToDiagram: () => void;
 }
@@ -48,12 +48,13 @@ export function ExamResultsScreenNew({
 
   const categoryPerformance = questions.reduce((acc, q) => {
     const answer = result.answers[q.id];
-    if (!acc[q.category]) {
-      acc[q.category] = { correct: 0, total: 0, accuracy: 0 };
+    const category = q.category || 'Sem Categoria';
+    if (!acc[category]) {
+      acc[category] = { correct: 0, total: 0, accuracy: 0 };
     }
-    acc[q.category].total++;
-    if (answer?.isCorrect) acc[q.category].correct++;
-    acc[q.category].accuracy = (acc[q.category].correct / acc[q.category].total) * 100;
+    acc[category].total++;
+    if (answer?.isCorrect) acc[category].correct++;
+    acc[category].accuracy = (acc[category].correct / acc[category].total) * 100;
     return acc;
   }, {} as Record<string, { correct: number; total: number; accuracy: number }>);
 
@@ -114,14 +115,21 @@ export function ExamResultsScreenNew({
 
               {/* Opções compactas - Apenas A-D */}
               <div className="space-y-2 mb-6">
-                {selectedQuestion.options
-                  .filter(opt => opt && opt.text && opt.text.trim() !== '')
+                {(selectedQuestion.options as Array<string | { label: string; text: string }>)
+                  .filter(opt => {
+                    if (typeof opt === 'string') return opt.trim() !== '';
+                    return opt && typeof opt === 'object' && 'text' in opt && opt.text && opt.text.trim() !== '';
+                  })
                   .slice(0, 4)
                   .map((option, index) => {
-                    const isCorrect = selectedQuestion.correctAnswer.split(',').includes(option.label);
+                    const isOption = typeof option === 'object' && 'label' in option;
+                    const label = isOption ? option.label : String.fromCharCode(65 + index); // A, B, C, D
+                    const text = isOption ? option.text : String(option);
+                    
+                    const isCorrect = selectedQuestion.correctAnswer.split(',').includes(label);
                     const userAnswer = result.answers[selectedQuestion.id];
-                    const wasSelected = userAnswer?.selected === option.label || 
-                                       userAnswer?.selected?.includes(option.label);
+                    const wasSelected = userAnswer?.selected === label || 
+                                       userAnswer?.selected?.includes(label);
 
                     return (
                       <div
@@ -142,10 +150,10 @@ export function ExamResultsScreenNew({
                             ? 'border-red-500 bg-red-500 text-white'
                             : 'border-gray-300 text-gray-400'
                         }`}>
-                          {option.label}
+                          {label}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-900 leading-relaxed">{option.text}</p>
+                          <p className="text-sm text-gray-900 leading-relaxed">{text}</p>
                           {isCorrect && (
                             <div className="flex items-center gap-1 mt-1 text-green-700">
                               <CheckCircle size={14} />
