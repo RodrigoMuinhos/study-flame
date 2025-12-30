@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/aws-study/MainLayout';
 import { DashboardHome } from '@/components/aws-study/DashboardHome';
 import { TrainingDomainSelector } from '@/components/aws-study/TrainingDomainSelector';
@@ -12,16 +13,46 @@ import { DiagramView } from '@/components/aws-study/DiagramView';
 import { SimulatorMode } from '@/components/aws-study/SimulatorMode';
 import { StudyPlan } from '@/components/aws-study/StudyPlan';
 import { Review } from '@/components/aws-study/Review';
-import { generateRandomExam, generateMixedExam } from '@/utils/examGenerator';
+import { ExamConfigScreen, ExamConfig } from '@/components/aws-study/ExamConfigScreen';
+import { ExamSimulatorNew } from '@/components/aws-study/ExamSimulatorNew';
 
-type Screen = 'home' | 'diagram' | 'training-select' | 'training' | 'simulator' | 'simulator-active' | 'official-exam' | 'stats' | 'study-plan' | 'review';
+type Screen = 'home' | 'diagram' | 'training-select' | 'training' | 'simulator' | 'simulator-config' | 'simulator-active' | 'official-exam' | 'stats' | 'study-plan' | 'review';
 
 export function AWSStudyApp() {
+  const router = useRouter();
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [practiceConfig, setPracticeConfig] = useState<PracticeConfig | null>(null);
+  const [examConfig, setExamConfig] = useState<ExamConfig | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Permite deep-link direto via /aws-study/study?view=stats (usado pelo sidebar durante o exame)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    if (!view) return;
+
+    const allowed = new Set([
+      'home',
+      'diagram',
+      'training',
+      'simulator',
+      'official-exam',
+      'stats',
+      'study-plan',
+      'review'
+    ]);
+
+    if (!allowed.has(view)) return;
+
+    if (view === 'training') {
+      setCurrentScreen('training-select');
+      return;
+    }
+
+    setCurrentScreen(view as Screen);
+  }, []);
 
   // Navigation handler para o MainLayout
   const handleNavigate = (view: 'home' | 'diagram' | 'training' | 'simulator' | 'official-exam' | 'stats' | 'study-plan' | 'review') => {
@@ -47,6 +78,20 @@ export function AWSStudyApp() {
     setSelectedService(nextId);
     setTimeout(() => {
       const element = document.querySelector(`[data-service-id="${nextId}"]`);
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
+  };
+
+  const handlePrevStep = (prevId: string) => {
+    setSelectedService(prevId);
+    setTimeout(() => {
+      const element = document.querySelector(`[data-service-id="${prevId}"]`);
       if (element) {
         element.scrollIntoView({ 
           behavior: 'smooth', 
@@ -100,7 +145,10 @@ export function AWSStudyApp() {
       <MainLayout currentView="training" onNavigate={handleNavigate}>
         <TrainingMode
           topicId={selectedDomain}
-          onBack={() => setCurrentScreen('training-select')}
+          onBack={() => {
+            setSelectedDomain(null);
+            setCurrentScreen('training-select');
+          }}
         />
       </MainLayout>
     );
@@ -110,10 +158,9 @@ export function AWSStudyApp() {
   if (currentScreen === 'simulator') {
     return (
       <MainLayout currentView="simulator" onNavigate={handleNavigate}>
-        <PracticeConfigScreen
-          mode="practice"
-          onStart={(config) => {
-            setPracticeConfig(config);
+        <ExamConfigScreen
+          onStartExam={(config) => {
+            setExamConfig(config);
             setCurrentScreen('simulator-active');
           }}
           onBack={() => setCurrentScreen('home')}
@@ -122,19 +169,20 @@ export function AWSStudyApp() {
     );
   }
 
-  // Active Simulator
-  if (currentScreen === 'simulator-active' && practiceConfig) {
-    // Gerar questões aleatórias de TODOS os bancos (exame + treino)
-    const questions = generateMixedExam(practiceConfig.questionCount);
-    
+  // Simulator Active
+  if (currentScreen === 'simulator-active' && examConfig) {
     return (
-      <MainLayout currentView="simulator" onNavigate={handleNavigate}>
-        <SimulatorMode
-          config={practiceConfig}
-          questions={questions}
-          onBack={() => setCurrentScreen('home')}
-        />
-      </MainLayout>
+      <ExamSimulatorNew
+        config={examConfig}
+        onBackToConfig={() => {
+          setCurrentScreen('simulator');
+          setExamConfig(null);
+        }}
+        onBackToDiagram={() => {
+          setCurrentScreen('home');
+          setExamConfig(null);
+        }}
+      />
     );
   }
 
@@ -143,7 +191,6 @@ export function AWSStudyApp() {
     return (
       <MainLayout currentView="official-exam" onNavigate={handleNavigate}>
         <OfficialExamScreen
-          onStart={() => setCurrentScreen('home')}
           onBack={() => setCurrentScreen('home')}
         />
       </MainLayout>
@@ -193,6 +240,7 @@ export function AWSStudyApp() {
           onServiceClick={handleServiceClick}
           onClosePanel={handleClosePanel}
           onNextStep={handleNextStep}
+          onPrevStep={handlePrevStep}
           onTraining={handleTraining}
           onBack={() => setCurrentScreen('home')}
           onGoToSimulator={() => setCurrentScreen('simulator')}

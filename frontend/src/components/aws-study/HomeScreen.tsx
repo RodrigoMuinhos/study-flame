@@ -1,14 +1,19 @@
 import React from 'react';
 import { BookOpen, GraduationCap, Network, Clock, CheckCircle, Target, BarChart3 } from 'lucide-react';
 
-interface HomeScreenProps {
-  onSelectDiagram: () => void;
-  onSelectTraining: () => void;
-  onSelectExam: () => void;
-  onSelectStats: () => void;
+export interface HomeScreenProps {
+  onSelectDiagram?: () => void;
+  onSelectTraining?: () => void;
+  onSelectExam?: () => void;
+  onSelectStats?: () => void;
 }
 
-export function HomeScreen({ onSelectDiagram, onSelectTraining, onSelectExam, onSelectStats }: HomeScreenProps) {
+export function HomeScreen({ 
+  onSelectDiagram = () => {}, 
+  onSelectTraining = () => {}, 
+  onSelectExam = () => {}, 
+  onSelectStats = () => {} 
+}: HomeScreenProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 py-12 px-4">
       <div className="max-w-6xl mx-auto">

@@ -233,7 +233,27 @@ export function AccessSection({ students, setStudents, onToggleAccess }: AccessS
   const sendWhatsApp = (cred: StudentCredentials) => {
     const phone = cred.leadPhone.replace(/\D/g, ''); // Remove caracteres não numéricos
     const text = encodeURIComponent(
-      `Olá ${cred.leadName}! Suas credenciais do Bootcamp FLAME:\n\nCPF: ${cred.leadCpf}\nSenha: ${cred.password}\n\nAcesse o portal agora!`
+      `Olá, ${cred.leadName}!
+Seja muito bem-vindo(a) ao Bootcamp FLAME - do Zero ao Deploy.
+
+Você foi selecionado(a) para usar nossa plataforma de estudos (a trilha completa com aulas, desafios e progresso).
+
+*Banner do Bootcamp:*
+https://study-flame.vercel.app/Flamebanner.png
+
+*Entre no grupo oficial (avisos + suporte + materiais):*
+https://chat.whatsapp.com/BMoAhtm2ofhCRPxCgAcFmB
+
+*Acesse a plataforma:*
+https://Study-flame.vercel.app/
+
+*Suas credenciais de acesso:*
+CPF: ${cred.leadCpf}
+Senha: ${cred.password}
+
+Qualquer dúvida (acesso, trilha, exercícios, deploy), me chama aqui sem medo - vou te ajudar.
+
+Bem-vindo(a) à jornada!`
     );
     window.open(`https://wa.me/55${phone}?text=${text}`);
     markAsSent(cred.id);
@@ -352,9 +372,29 @@ export function AccessSection({ students, setStudents, onToggleAccess }: AccessS
   };
 
   const handleSendWhatsApp = (student: Student) => {
-    // Simulação de envio de WhatsApp
+    // Envio de WhatsApp com mensagem completa
     const message = encodeURIComponent(
-      `Olá ${student.name}! 🔥\n\nSuas credenciais de acesso ao Portal FLAME:\n\nCPF: ${student.cpf}\nSenha: ${student.password}\n\nAcesse: portal.flame.com`
+      `Olá, ${student.name}!
+Seja muito bem-vindo(a) ao Bootcamp FLAME - do Zero ao Deploy.
+
+Você foi selecionado(a) para usar nossa plataforma de estudos (a trilha completa com aulas, desafios e progresso).
+
+*Banner do Bootcamp:*
+https://study-flame.vercel.app/Flamebanner.png
+
+*Entre no grupo oficial (avisos + suporte + materiais):*
+https://chat.whatsapp.com/BMoAhtm2ofhCRPxCgAcFmB
+
+*Acesse a plataforma:*
+https://Study-flame.vercel.app/
+
+*Suas credenciais de acesso:*
+CPF: ${student.cpf}
+Senha: ${student.password}
+
+Qualquer dúvida (acesso, trilha, exercícios, deploy), me chama aqui sem medo - vou te ajudar.
+
+Bem-vindo(a) à jornada!`
     );
     
     const updatedStudents = students.map(s =>

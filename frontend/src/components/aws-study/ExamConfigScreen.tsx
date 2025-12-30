@@ -7,22 +7,29 @@ interface ExamConfigScreenProps {
 }
 
 export interface ExamConfig {
-  questionsCount: 10 | 20 | 40 | 65;
+  questionsCount: 10 | 20 | 30 | 40 | 50 | 65;
   timerEnabled: boolean;
   timerMinutes: number;
-  focusOnWeakness: boolean;
+  feedbackEnabled: boolean;
+  mixedMode?: boolean;
+  topicMix?: {
+    topic: string;
+    quantity: number;
+  }[];
 }
 
 export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps) {
-  const [questionsCount, setQuestionsCount] = useState<10 | 20 | 40 | 65>(20);
+  const [questionsCount, setQuestionsCount] = useState<10 | 20 | 30 | 40 | 50 | 65>(30);
   const [timerEnabled, setTimerEnabled] = useState(true);
-  const [focusOnWeakness, setFocusOnWeakness] = useState(false);
+  const [feedbackEnabled, setFeedbackEnabled] = useState(false);
 
   const getTimerMinutes = () => {
     switch (questionsCount) {
       case 10: return 20;
       case 20: return 40;
+      case 30: return 60;
       case 40: return 80;
+      case 50: return 100;
       case 65: return 130;
     }
   };
@@ -32,7 +39,7 @@ export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps)
       questionsCount,
       timerEnabled,
       timerMinutes: getTimerMinutes(),
-      focusOnWeakness,
+      feedbackEnabled,
     });
   };
 
@@ -50,13 +57,13 @@ export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps)
 
         <div className="text-center mb-12">
           <div className="inline-block bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-2 rounded-full text-sm font-semibold mb-4">
-            CONFIGURAÇÃO DO SIMULADO
+            SIMULADOR AWS
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Monte seu Simulado Perfeito
+            Simulador AWS
           </h1>
           <p className="text-lg text-gray-600">
-            Personalize quantidade de questões, timer e foco de estudo
+            Simulados configuráveis (quantidade, tempo e feedback)
           </p>
         </div>
 
@@ -67,11 +74,11 @@ export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps)
               <Target size={24} className="text-orange-600" />
               Quantas questões você quer?
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[10, 20, 40, 65].map((count) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[10, 20, 30, 40, 50, 65].map((count) => (
                 <button
                   key={count}
-                  onClick={() => setQuestionsCount(count as 10 | 20 | 40 | 65)}
+                  onClick={() => setQuestionsCount(count as 10 | 20 | 30 | 40 | 50 | 65)}
                   className={`p-6 rounded-xl border-2 transition-all ${
                     questionsCount === count
                       ? 'border-orange-500 bg-orange-50 shadow-lg scale-105'
@@ -129,40 +136,47 @@ export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps)
             </div>
           </div>
 
-          {/* Foco em Pontos Fracos */}
+          {/* Feedback */}
           <div className="mb-8">
             <label className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
               <TrendingUp size={24} className="text-purple-600" />
-              Modo Inteligente
+              Feedback
             </label>
-            <button
-              onClick={() => setFocusOnWeakness(!focusOnWeakness)}
-              className={`w-full p-6 rounded-xl border-2 transition-all ${
-                focusOnWeakness
-                  ? 'border-purple-500 bg-purple-50 shadow-lg'
-                  : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/30'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={focusOnWeakness}
-                    onChange={() => setFocusOnWeakness(!focusOnWeakness)}
-                    className="w-5 h-5 text-purple-600 rounded"
-                  />
-                  <span className="font-semibold text-gray-900">
-                    Focar nos meus pontos fracos
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                onClick={() => setFeedbackEnabled(true)}
+                className={`p-6 rounded-xl border-2 transition-all ${
+                  feedbackEnabled
+                    ? 'border-purple-500 bg-purple-50 shadow-lg'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/30'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <TrendingUp size={20} className="text-purple-600" />
+                  <span className="font-semibold text-gray-900">Feedback Imediato</span>
                 </div>
-                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
-                  RECOMENDADO
-                </span>
-              </div>
-              <div className="text-sm text-gray-600 text-left">
-                Priorizará questões das categorias onde você tem menor acurácia
-              </div>
-            </button>
+                <div className="text-sm text-gray-600">
+                  Ver se acertou após cada questão
+                </div>
+              </button>
+
+              <button
+                onClick={() => setFeedbackEnabled(false)}
+                className={`p-6 rounded-xl border-2 transition-all ${
+                  !feedbackEnabled
+                    ? 'border-purple-500 bg-purple-50 shadow-lg'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/30'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Target size={20} className="text-purple-600" />
+                  <span className="font-semibold text-gray-900">Somente no Review</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  Ver respostas apenas no final
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Botão Iniciar */}
@@ -170,7 +184,7 @@ export function ExamConfigScreen({ onStartExam, onBack }: ExamConfigScreenProps)
             onClick={handleStartExam}
             className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-5 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
           >
-            🚀 Iniciar Simulado
+            🚀 Iniciar Simulado ({questionsCount} questões • {timerEnabled ? `~${getTimerMinutes()} min` : 'Sem limite'})
           </button>
         </div>
 

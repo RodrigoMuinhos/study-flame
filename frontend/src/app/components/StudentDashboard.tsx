@@ -2,9 +2,6 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-
 import { 
   House, 
   BookOpen, 
@@ -32,7 +29,9 @@ import {
   Clock,
   Key,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Heart,
+  Star
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NotificationCenter } from "./ui/notification-center";
@@ -42,13 +41,138 @@ import { PrivacyPortal } from "./ui/privacy-portal";
 import { GamificationPanel } from "./ui/gamification-panel";
 import { EmptyState } from "./ui/empty-state";
 
-// Helper para obter URL de vídeo da aula. Retorna null se não houver mapeamento.
-const getVideoUrl = (modulo: number | string, id: number | string): string | null => {
-  // TODO: Mapear URLs reais por módulo/aula quando disponíveis
-  // Exemplo de mapeamento (comente/descomente quando tiver URLs reais):
-  // if (modulo === 1 && id === 1) return "https://www.youtube.com/embed/VIDEO_ID";
+// API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
+// Helper para converter URL do YouTube para embed
+const convertYoutubeUrl = (url: string): string => {
+  // Padrão: https://www.youtube.com/watch?v=VIDEO_ID
+  if (url.includes('watch?v=')) {
+    const videoId = url.split('watch?v=')[1].split('&')[0];
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  
+  // Padrão: https://youtu.be/VIDEO_ID
+  if (url.includes('youtu.be/')) {
+    const videoId = url.split('youtu.be/')[1].split('?')[0];
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  
+  // Se já estiver em formato embed
+  if (url.includes('/embed/')) {
+    return url;
+  }
+  
+  return url;
+};
+
+// Helper para buscar vídeo de BOAS-VINDAS (pageLocation = "inicio", module=0, lesson=0)
+// Esse vídeo deve ser gerenciado via Admin (tabela video_lessons no Neon)
+const getWelcomeVideoUrl = async (): Promise<string | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/videos/module/0/lesson/0`);
+
+    if (response.ok) {
+      const video = await response.json();
+
+      if (video.pageLocation === 'inicio' && video.youtubeUrl) {
+        return convertYoutubeUrl(video.youtubeUrl);
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao buscar vídeo de boas-vindas:', e);
+  }
+
   return null;
 };
+
+// Helper para buscar vídeo de AULA (pageLocation = "aulas")
+const getLessonVideoUrl = async (modulo: number | string, id: number | string): Promise<string | null> => {
+  try {
+    // Buscar vídeo específico da aula
+    const response = await fetch(`${API_BASE_URL}/videos/module/${modulo}/lesson/${id}`);
+    
+    if (response.ok) {
+      const video = await response.json();
+      
+      // Verificar se é realmente um vídeo de aula
+      if (video.pageLocation === 'aulas' && video.youtubeUrl) {
+        return convertYoutubeUrl(video.youtubeUrl);
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao buscar vídeo da aula:', e);
+  }
+  
+  return null;
+};
+
+// Componente para carregar e exibir vídeo
+function VideoPlayer({ 
+  type = 'lesson',
+  moduleNumber, 
+  lessonNumber, 
+  title 
+}: { 
+  type?: 'welcome' | 'lesson';
+  moduleNumber?: number; 
+  lessonNumber?: number; 
+  title?: string;
+}) {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadVideo = async () => {
+      setLoading(true);
+      let url: string | null = null;
+      
+      if (type === 'welcome') {
+        // Buscar o vídeo de boas-vindas no banco de dados (video_lessons)
+        url = await getWelcomeVideoUrl();
+      } else if (moduleNumber !== undefined && lessonNumber !== undefined) {
+        // Buscar vídeo de aula específica no banco de dados
+        url = await getLessonVideoUrl(moduleNumber, lessonNumber);
+      }
+      
+      setVideoUrl(url);
+      setLoading(false);
+    };
+    loadVideo();
+  }, [type, moduleNumber, lessonNumber]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="mb-3 text-3xl animate-pulse">⌛</div>
+          <p className="text-sm text-gray-500">Carregando vídeo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (videoUrl) {
+    return (
+      <iframe
+        src={videoUrl}
+        className="h-full w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title={title || "Vídeo da Aula"}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full items-center justify-center text-gray-400">
+      <div className="text-center">
+        <div className="mb-3 text-5xl">▶</div>
+        <p className="text-sm">Este vídeo não está disponível</p>
+      </div>
+    </div>
+  );
+}
 
 // Handler global para conclusão do tour de boas-vindas
 const handleWelcomeComplete = () => {
@@ -67,7 +191,8 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   const [currentPage, setCurrentPage] = useState<PageType>("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [temaSelecionado, setTemaSelecionado] = useState<string>('theme-fire-dark');
+  const [temaSelecionado, setTemaSelecionado] = useState<string>('theme-fire-light');
+  const [showWelcomeTour, setShowWelcomeTour] = useState(false);
   const { addToast } = useToast();
   
   // Estados para validação de token AWS
@@ -131,7 +256,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   
   // Carrega o tema salvo ao montar o componente
   useEffect(() => {
-    const temaSalvo = localStorage.getItem('theme') || 'theme-fire-dark';
+    const temaSalvo = localStorage.getItem('theme') || 'theme-fire-light';
     console.log('Carregando tema salvo:', temaSalvo);
     aplicarTema(temaSalvo);
   }, []);
@@ -143,11 +268,37 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
     setCurrentPage(paginaSalva);
   }, []);
 
+  // Verifica se é o primeiro acesso e mostra o tour automaticamente
+  useEffect(() => {
+    const tourCompleted = localStorage.getItem('welcome_tour');
+    if (!tourCompleted) {
+      // Pequeno delay para garantir que a página carregou completamente
+      setTimeout(() => {
+        setShowWelcomeTour(true);
+      }, 500);
+    }
+  }, []);
+
   // Salva a página atual sempre que muda
   useEffect(() => {
     console.log('Salvando página:', currentPage);
     localStorage.setItem('currentPage', currentPage);
   }, [currentPage]);
+
+  // Handler para conclusão do tour
+  const handleWelcomeComplete = () => {
+    setShowWelcomeTour(false);
+    addToast({
+      type: 'success',
+      title: 'Tour concluído! Bem-vindo ao Bootcamp FLAME 🔥',
+    });
+  };
+
+  // Função para reiniciar o tour (será chamada pelas configurações)
+  const restartTour = () => {
+    localStorage.removeItem('welcome_tour');
+    setShowWelcomeTour(true);
+  };
   
   // Listen for navigation events
   useEffect(() => {
@@ -327,7 +478,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
               initial={{ x: -280 }}
@@ -407,13 +558,13 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="text-white/60 hover:text-white lg:hidden"
+                className="text-foreground/60 hover:text-foreground lg:hidden"
               >
                 <Menu size={24} />
               </button>
               <div>
-                <h2 className="font-semibold text-white">Olá, {studentName ? studentName.split(' ')[0] : 'Aluno'}! 👋</h2>
-                <p className="text-white/50">Fase {studentData.currentPhase}</p>
+                <h2 className="font-semibold text-foreground">Olá, {studentName ? studentName.split(' ')[0] : 'Aluno'}! 👋</h2>
+                <p className="text-foreground/50">Fase {studentData.currentPhase}</p>
               </div>
             </div>
               <div className="flex items-center gap-2">
@@ -438,13 +589,13 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               className="p-4 lg:p-6"
             >
               {currentPage === "inicio" && <HomePage studentData={studentData} studentName={studentName} />}
-              {currentPage === "trilha" && <TrilhaPage />}
+              {currentPage === "trilha" && <TrilhaPage setCurrentPage={setCurrentPage} />}
               {currentPage === "aulas" && <AulasPage />}
               {currentPage === "desafios" && <DesafiosPage />}
               {currentPage === "conquistas" && <ConquistasPage />}
               {currentPage === "materiais" && <MateriaisPage />}
               {currentPage === "aws" && <AwsStudyPage />}
-              {currentPage === "conta" && <ContaPage studentName={studentName} onLogout={onLogout} temas={temas} temaSelecionado={temaSelecionado} aplicarTema={aplicarTema} />}
+              {currentPage === "conta" && <ContaPage studentName={studentName} onLogout={onLogout} temas={temas} temaSelecionado={temaSelecionado} aplicarTema={aplicarTema} restartTour={restartTour} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -483,7 +634,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                 setAwsToken('');
                 setAwsTokenError('');
               }}
-              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+              className="fixed inset-0 z-50 bg-background/50"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -491,14 +642,14 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="w-full max-w-md rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-muted/30 p-6 shadow-2xl">
+              <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl">
               {/* Header */}
               <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-2 ring-primary/30">
-                  <Key className="h-6 w-6 text-primary" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+                  <Key className="h-7 w-7 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-foreground">AWS Study</h3>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-foreground">AWS Study</h3>
                   <p className="text-sm text-muted-foreground">Digite seu token de acesso</p>
                 </div>
                 <button
@@ -507,15 +658,15 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                     setAwsToken('');
                     setAwsTokenError('');
                   }}
-                  className="ml-auto text-muted-foreground hover:text-foreground transition"
+                  className="text-muted-foreground hover:text-foreground transition"
                 >
-                  <X size={20} />
+                  <X size={24} />
                 </button>
               </div>
 
               {/* Input de Token */}
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-medium text-foreground">
+              <div className="mb-6">
+                <label className="mb-2 block text-sm font-semibold text-foreground">
                   Token de Acesso
                 </label>
                 <input
@@ -527,13 +678,13 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && validateAwsToken()}
                   placeholder="XXXX-XXXXXX-XXXX"
-                  className="w-full rounded-lg border border-border bg-input px-4 py-3 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border-2 border-input bg-background px-4 py-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-4 focus:ring-primary/20"
                   maxLength={16}
                   autoFocus
                   data-testid="aws-token-modal-input"
                 />
                 {awsTokenError && (
-                  <p className="mt-2 text-sm text-red-400" data-testid="aws-token-modal-error">{awsTokenError}</p>
+                  <p className="mt-2 text-sm font-medium text-red-600" data-testid="aws-token-modal-error">{awsTokenError}</p>
                 )}
               </div>
 
@@ -541,28 +692,30 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               <button
                 onClick={validateAwsToken}
                 disabled={validatingToken || !awsToken.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-6 py-3 font-semibold text-white shadow-lg shadow-primary/25 transition hover:shadow-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 text-lg font-bold text-foreground shadow-lg transition hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                 data-testid="aws-token-modal-submit"
               >
                 {validatingToken ? (
                   <>
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-border/30 border-t-white" />
                     Validando...
                   </>
                 ) : (
                   <>
-                    <Lock size={18} />
+                    <Lock size={20} />
                     Acessar AWS Study
                   </>
                 )}
               </button>
 
               {/* Info */}
-              <p className="mt-4 text-center text-xs text-muted-foreground">
-                O token foi enviado pelo administrador do curso.
-                <br />
-                Caso não tenha recebido, entre em contato.
-              </p>
+              <div className="mt-6 rounded-xl bg-blue-50 border border-blue-200 p-4">
+                <p className="text-center text-sm text-gray-700 leading-relaxed">
+                  O token foi enviado pelo administrador do curso.
+                  <br />
+                  <span className="font-medium">Caso não tenha recebido, entre em contato.</span>
+                </p>
+              </div>
               </div>
             </motion.div>
           </>
@@ -577,7 +730,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 z-50 bg-background/50"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -586,14 +739,14 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               transition={{ type: "spring", duration: 0.5 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="w-full max-w-lg rounded-3xl border border-primary/30 bg-gradient-to-br from-card via-card to-muted/20 p-8 shadow-2xl">
+              <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-8 shadow-xl">
                 {/* Header com Ícone */}
                 <div className="mb-6 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                    className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-2 ring-primary/40"
+                    className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10"
                   >
                     <Cloud className="h-10 w-10 text-primary" />
                   </motion.div>
@@ -601,7 +754,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="text-2xl font-bold text-foreground"
+                    className="text-3xl font-bold text-foreground"
                   >
                     Bem-vindo ao AWS Study! 🚀
                   </motion.h2>
@@ -620,9 +773,9 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="mb-6 rounded-xl bg-muted/30 p-4 text-center"
+                  className="mb-6 rounded-xl bg-accent/20 border border-primary/30 p-5 text-center"
                 >
-                  <p className="text-sm leading-relaxed text-foreground/90">
+                  <p className="text-sm leading-relaxed text-foreground">
                     O <strong className="text-primary">AWS Study</strong> é sua área exclusiva de estudos para 
                     <strong className="text-primary"> Computação em Nuvem</strong>. Aqui você vai dominar os 
                     serviços da Amazon Web Services e se preparar para as certificações mais valorizadas do mercado.
@@ -636,29 +789,29 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                   transition={{ delay: 0.6 }}
                   className="mb-6 grid grid-cols-2 gap-3"
                 >
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                      <BookOpen className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-3 rounded-xl bg-accent/20 border border-primary/30 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <BookOpen className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-medium text-foreground">Conteúdo Completo</span>
+                    <span className="text-sm font-semibold text-foreground">Conteúdo Completo</span>
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                      <Award className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-3 rounded-xl bg-accent/20 border border-primary/30 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Award className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-medium text-foreground">Simulados Reais</span>
+                    <span className="text-sm font-semibold text-foreground">Simulados Reais</span>
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                      <BarChart3 className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-3 rounded-xl bg-accent/20 border border-primary/30 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <BarChart3 className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-medium text-foreground">Progresso Detalhado</span>
+                    <span className="text-sm font-semibold text-foreground">Progresso Detalhado</span>
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                      <Zap className="h-4 w-4 text-primary" />
+                  <div className="flex items-center gap-3 rounded-xl bg-accent/20 border border-primary/30 p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Zap className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-medium text-foreground">Flashcards Interativos</span>
+                    <span className="text-sm font-semibold text-foreground">Flashcards Interativos</span>
                   </div>
                 </motion.div>
 
@@ -672,26 +825,31 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                   onClick={() => {
                     window.location.href = '/aws-study/study';
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 px-6 py-4 font-bold text-white shadow-lg shadow-primary/30 transition hover:shadow-primary/50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 text-lg font-bold text-foreground shadow-lg transition hover:scale-105 hover:shadow-xl"
                 >
                   <span>Entrar no AWS Study</span>
                   <ArrowRight className="h-5 w-5" />
                 </motion.button>
 
                 {/* Dica */}
-                <motion.p
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.8 }}
-                  className="mt-4 text-center text-xs text-muted-foreground"
+                  className="mt-4 rounded-xl bg-gray-50 border border-gray-200 p-3"
                 >
-                  💡 Sua sessão permanece ativa por 10 minutos
-                </motion.p>
+                  <p className="text-center text-sm text-gray-600">
+                    💡 Sua sessão permanece ativa por 10 minutos
+                  </p>
+                </motion.div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Tour de Boas-Vindas - Aparece automaticamente no primeiro acesso */}
+      <WelcomeTour onComplete={handleWelcomeComplete} forceShow={showWelcomeTour} />
     </div>
   );
 }
@@ -710,129 +868,176 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#F5F1E8]/5 via-transparent to-orange-500/5 p-6 lg:p-8">
-        <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
-        <div className="relative">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/20">
-              <Flame size={16} className="text-white/60" />
-              <span className="font-semibold text-white/60">Comece sua sequência</span>
-            </div>
+    <div className="mx-auto max-w-7xl space-y-8 p-6">
+      {/* Hero Section - Boas-vindas */}
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card/80 to-card p-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+            <Flame size={16} />
+            Bem-vindo ao Bootcamp FLAME
           </div>
-          <h1 className="mb-2 font-bold text-white">
-            Olá, {studentName ? studentName.split(' ')[0] : 'Aluno'}!
+          <h1 className="mb-3 text-4xl font-bold text-foreground">
+            Olá, {studentName ? studentName.split(' ')[0] : 'Aluno'}! 👋
           </h1>
-          <p className="mb-6 text-white/70">
-            Você está começando sua jornada • Próxima fase: <span className="text-white/90">{studentData.nextPhase}</span>
+          <p className="mb-6 text-lg text-muted-foreground">
+            Você está começando sua jornada • Próxima fase: <span className="font-semibold text-primary">{studentData.nextPhase}</span>
           </p>
-          <a
-            href="#aulas"
+          <button
             onClick={(e) => {
               e.preventDefault();
               const event = new CustomEvent('navigate-to-aulas');
               window.dispatchEvent(event);
             }}
-            className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-6 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40"
+            className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-8 py-4 font-semibold text-primary-foreground shadow-lg shadow-orange-500/25 transition hover:scale-105 hover:shadow-xl hover:shadow-orange-500/40"
           >
             Começar agora
-            <ChevronRight size={18} className="transition group-hover:translate-x-1" />
-          </a>
+            <ChevronRight size={20} className="transition group-hover:translate-x-1" />
+          </button>
         </div>
       </div>
 
+      {/* Cards de Ação Rápida */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div 
+          onClick={() => {
+            const event = new CustomEvent('navigate-to-aulas');
+            window.dispatchEvent(event);
+          }}
+          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+        >
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <BookOpen className="text-primary" size={24} />
+          </div>
+          <h3 className="mb-2 text-lg font-bold text-foreground">Aulas</h3>
+          <p className="text-sm text-muted-foreground">Assista videoaulas e aprenda no seu ritmo</p>
+        </div>
+
+        <div 
+          onClick={() => alert('Desafios em breve! 🎯')}
+          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+        >
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Target className="text-primary" size={24} />
+          </div>
+          <h3 className="mb-2 text-lg font-bold text-foreground">Desafios</h3>
+          <p className="text-sm text-muted-foreground">Pratique com exercícios reais</p>
+        </div>
+
+        <div 
+          onClick={() => alert('Conquistas em breve! 🏆')}
+          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+        >
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Trophy className="text-primary" size={24} />
+          </div>
+          <h3 className="mb-2 text-lg font-bold text-foreground">Conquistas</h3>
+          <p className="text-sm text-muted-foreground">Acompanhe seu progresso e badges</p>
+        </div>
+      </div>
+
+      {/* Progresso e Tarefas */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Vídeo do YouTube */}
-        <div className="rounded-2xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-            <div className="rounded-xl border border-border bg-card/80 p-6">
-              <h3 className="mb-4 font-semibold text-foreground">Informações pessoais</h3>
-            <h3 className="font-semibold text-white">Comece por aqui</h3>
-          </div>
-          <div className="aspect-video overflow-hidden rounded-lg bg-black/20">
-            <div className="flex h-full items-center justify-center text-white/40">
-              <div className="text-center">
-                <div className="mb-2 text-4xl">▶</div>
-                <p>Este vídeo não está disponível</p>
-              </div>
-            </div>
-          </div>
-          <a
-            href="https://www.youtube.com/@Rodrigomuinhosdev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-white/90 transition hover:bg-white/10"
-          >
-            Ver canal completo
-            <ChevronRight size={16} />
-          </a>
-        </div>
-
         {/* Progresso Gamificado */}
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-orange-500/10 to-red-500/10 p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-white">Seu Progresso</h3>
-              <span className="text-orange-400">{studentData.progressPercent}%</span>
-            </div>
-            <div className="mb-2 h-3 overflow-hidden rounded-full bg-black/20">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${studentData.progressPercent}%` }}
-                transition={{ duration: 1, delay: 0.2 }}
-                className="h-full bg-gradient-to-r from-orange-500 to-red-500"
-              />
-            </div>
-            <p className="mb-4 text-white/60">
-              Comece agora e acenda a primeira chama 🔥
-            </p>
-            <div className="flex gap-2">
-              {["Faísca", "Combustão", "Chama", "Forja", "Incêndio"].map((phase) => (
-                <div
-                  key={phase}
-                  className="flex-1 rounded-full bg-white/5 py-1 text-center text-xs font-medium text-white/30"
-                >
-                  {phase}
-                </div>
-              ))}
-            </div>
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-foreground">Seu Progresso</h3>
+            <span className="text-2xl font-bold text-primary">{studentData.progressPercent}%</span>
           </div>
-
-          {/* Checklist do dia */}
-          <div className="rounded-2xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-            <h3 className="mb-4 font-semibold text-white">Tarefas de hoje ✨</h3>
-            <div className="space-y-3">
-              {checklist.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/5 bg-white/5 p-3 transition hover:bg-white/10"
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.done}
-                    onChange={() => toggleCheck(item.id)}
-                    className="peer sr-only"
-                  />
-                  <div className="flex h-5 w-5 items-center justify-center rounded border-2 border-white/20 bg-transparent transition peer-checked:border-orange-500 peer-checked:bg-orange-500">
-                    {item.done && <Check size={14} className="text-white" />}
-                  </div>
-                  <span className={`flex-1 transition ${item.done ? "text-white/40 line-through" : "text-white/90"}`}>
-                    {item.text}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <p className="mt-4 text-center text-white/50">
-              +50 XP por tarefa concluída
-            </p>
+          <div className="mb-3 h-4 overflow-hidden rounded-full bg-muted">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${studentData.progressPercent}%` }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+            />
+          </div>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Comece agora e acenda a primeira chama 🔥
+          </p>
+          <div className="flex gap-2">
+            {["Faísca", "Combustão", "Chama", "Forja", "Incêndio"].map((phase, index) => (
+              <div
+                key={phase}
+                className={`flex-1 rounded-full py-2 text-center text-xs font-semibold ${
+                  index === 0 ? "bg-primary/10 text-primary" : "bg-muted/30 text-muted-foreground"
+                }`}
+              >
+                {phase}
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Checklist do dia */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h3 className="mb-4 text-xl font-bold text-foreground">Tarefas de hoje ✨</h3>
+          <div className="space-y-3">
+            {checklist.map((item) => (
+              <label
+                key={item.id}
+                onClick={(e) => {
+                  if (item.id === 1) {
+                    e.preventDefault();
+                    const event = new CustomEvent('navigate-to-aulas');
+                    window.dispatchEvent(event);
+                  }
+                }}
+                className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background p-4 transition hover:border-primary/50 hover:bg-accent"
+              >
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => toggleCheck(item.id)}
+                  className="peer sr-only"
+                />
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg border-2 border-border bg-card transition peer-checked:border-primary peer-checked:bg-primary">
+                  {item.done && <Check size={16} className="text-foreground" />}
+                </div>
+                <span className={`flex-1 font-medium transition ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {item.text}
+                </span>
+                {item.id === 1 && (
+                  <ArrowRight size={16} className="text-primary" />
+                )}
+              </label>
+            ))}
+          </div>
+          <p className="mt-4 text-center text-sm font-medium text-muted-foreground">
+            +50 XP por tarefa concluída
+          </p>
+        </div>
+      </div>
+
+      {/* Vídeo de Introdução - Menor e abaixo */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Comece por aqui</h3>
+            <p className="text-sm text-muted-foreground">Assista ao vídeo de boas-vindas</p>
+          </div>
+          <div className="rounded-full bg-primary/10 p-3">
+            <Youtube className="text-primary" size={24} />
+          </div>
+        </div>
+        <div className="aspect-video overflow-hidden rounded-xl bg-gray-100">
+          <VideoPlayer type="welcome" title="Vídeo de Boas-vindas" />
+        </div>
+        <a
+          href="https://www.youtube.com/@Rodrigomuinhosdev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-6 py-3 font-semibold text-red-600 transition hover:bg-red-100"
+        >
+          <Youtube size={20} />
+          Ver canal completo
+          <ChevronRight size={18} />
+        </a>
       </div>
     </div>
   );
 }
 
-function TrilhaPage() {
+function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => void }) {
   const modulos = [
     {
       numero: 0,
@@ -1077,17 +1282,17 @@ function TrilhaPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-8">
-        <h1 className="mb-2 font-bold text-white">Trilha de Aprendizado</h1>
-        <p className="text-white/60">12 módulos para se tornar um desenvolvedor Full Stack profissional</p>
+        <h1 className="mb-2 font-bold text-foreground">Trilha de Aprendizado</h1>
+        <p className="text-muted-foreground">12 módulos para se tornar um desenvolvedor Full Stack profissional</p>
       </div>
 
       {/* Indicador de progresso geral */}
-      <div className="mb-8 rounded-xl border border-white/10 bg-gradient-to-br from-[#F5F1E8]/10 via-transparent to-orange-500/5 p-6">
+      <div className="mb-8 rounded-xl border border-border bg-gradient-to-br from-primary/10 via-transparent to-orange-500/5 p-6">
         <div className="mb-3 flex items-center justify-between">
-          <span className="font-semibold text-white">Progresso Geral</span>
+          <span className="font-semibold text-foreground">Progresso Geral</span>
           <span className="text-orange-400">0 de 12 módulos</span>
         </div>
-        <div className="h-3 overflow-hidden rounded-full bg-black/20">
+        <div className="h-3 overflow-hidden rounded-full bg-muted">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: "0%" }}
@@ -1105,12 +1310,12 @@ function TrilhaPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: modulo.numero * 0.05 }}
-            className="overflow-hidden rounded-xl border border-white/10 bg-[#F5F1E8]/5 transition hover:border-orange-500/30"
+            className="overflow-hidden rounded-xl border border-border bg-card/50 transition hover:border-orange-500/30"
           >
             {/* Header do módulo */}
             <button
               onClick={() => setModuloExpandido(moduloExpandido === modulo.numero ? null : modulo.numero)}
-              className="w-full p-6 text-left transition hover:bg-white/5"
+              className="w-full p-6 text-left transition hover:bg-muted/5"
             >
               <div className="flex items-start gap-4">
                 {/* Número e emoji */}
@@ -1122,16 +1327,16 @@ function TrilhaPage() {
                 <div className="flex-1">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="text-orange-400">Módulo {modulo.numero}</span>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {modulo.fase}
                     </span>
                   </div>
-                  <h3 className="mb-1 font-semibold text-white">{modulo.nome}</h3>
-                  <p className="mb-3 text-white/60">{modulo.subtitulo}</p>
+                  <h3 className="mb-1 font-semibold text-foreground">{modulo.nome}</h3>
+                  <p className="mb-3 text-muted-foreground">{modulo.subtitulo}</p>
 
                   {/* Barra de progresso */}
                   <div className="flex items-center gap-3">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/20">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all"
                         style={{ width: `${modulo.progresso}%` }}
@@ -1143,7 +1348,7 @@ function TrilhaPage() {
 
                 {/* Ícone de expandir */}
                 <ChevronRight
-                  className={`shrink-0 text-white/40 transition ${
+                  className={`shrink-0 text-foreground/40 transition ${
                     moduloExpandido === modulo.numero ? "rotate-90" : ""
                   }`}
                   size={20}
@@ -1159,15 +1364,15 @@ function TrilhaPage() {
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="overflow-hidden border-t border-white/5"
+                  className="overflow-hidden border-t border-border"
                 >
                   <div className="space-y-4 p-6 pt-4">
                     {/* Conteúdo do módulo */}
                     <div>
-                      <h4 className="mb-2 font-semibold text-white">Conteúdo:</h4>
+                      <h4 className="mb-2 font-semibold text-foreground">Conteúdo:</h4>
                       <ul className="space-y-1.5">
                         {modulo.conteudo.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-white/70">
+                          <li key={i} className="flex items-start gap-2 text-muted-foreground">
                             <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-orange-400" />
                             <span>{item}</span>
                           </li>
@@ -1182,18 +1387,21 @@ function TrilhaPage() {
                           <Award className="text-orange-400" size={16} />
                           <span className="font-semibold text-orange-400">Aula Especial</span>
                         </div>
-                        <p className="text-white/80">{modulo.convidado}</p>
+                        <p className="text-muted-foreground">{modulo.convidado}</p>
                       </div>
                     )}
 
                     {/* Entrega */}
-                    <div className="rounded-lg bg-white/5 p-4">
-                      <h4 className="mb-1 font-semibold text-white">🎯 Entrega:</h4>
-                      <p className="text-white/70">{modulo.entrega}</p>
+                    <div className="rounded-lg bg-muted/50 p-4">
+                      <h4 className="mb-1 font-semibold text-foreground">🎯 Entrega:</h4>
+                      <p className="text-muted-foreground">{modulo.entrega}</p>
                     </div>
 
                     {/* Botão de ação */}
-                    <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40">
+                    <button 
+                      onClick={() => setCurrentPage("aulas")}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 font-semibold text-primary-foreground shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40"
+                    >
                       Iniciar módulo
                       <ChevronRight size={16} />
                     </button>
@@ -1206,10 +1414,10 @@ function TrilhaPage() {
       </div>
 
       {/* Card final motivacional */}
-      <div className="mt-8 rounded-xl border border-white/10 bg-gradient-to-br from-orange-500/10 via-transparent to-red-500/10 p-6 text-center">
+      <div className="mt-8 rounded-xl border border-border bg-gradient-to-br from-orange-500/10 via-transparent to-red-500/10 p-6 text-center">
         <div className="mx-auto mb-4 text-4xl">🔥</div>
-        <h3 className="mb-2 font-semibold text-white">Bem-vindo ao Bootcamp FLAME!</h3>
-        <p className="text-white/60">
+        <h3 className="mb-2 font-semibold text-foreground">Bem-vindo ao Bootcamp FLAME!</h3>
+        <p className="text-muted-foreground">
           Comece sua jornada agora e torne-se um desenvolvedor Full Stack profissional
         </p>
       </div>
@@ -1347,7 +1555,7 @@ function AulasPage() {
         {/* Botão voltar */}
         <button
           onClick={() => setAulaAtual(null)}
-          className="mb-6 flex items-center gap-2 text-white/60 transition hover:text-white"
+          className="mb-6 flex items-center gap-2 text-muted-foreground transition hover:text-foreground"
         >
           <ChevronRight size={16} className="rotate-180" />
           Voltar para aulas
@@ -1361,58 +1569,44 @@ function AulasPage() {
               <span className="rounded-full bg-orange-500/20 px-3 py-1 text-xs font-semibold text-orange-400">
                 Módulo {aula.modulo} • Aula {aula.id}
               </span>
-              <span className="text-white/60">•</span>
-              <span className="text-white/60">{aula.duracao}</span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-muted-foreground">{aula.duracao}</span>
             </div>
-            <h1 className="mb-4 font-bold text-white">{aula.titulo}</h1>
-            <p className="text-xl italic text-[#F5F1E8]">"{aula.conteudo.apresentacao}"</p>
+            <h1 className="mb-4 font-bold text-foreground">{aula.titulo}</h1>
+            <p className="text-xl italic text-foreground/90">"{aula.conteudo.apresentacao}"</p>
           </div>
 
           {/* Player de Vídeo */}
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20 shadow-2xl">
+          <div className="overflow-hidden rounded-2xl border border-border bg-background/20 shadow-2xl">
             <div className="relative aspect-video w-full">
-              {getVideoUrl(aula.modulo, aula.id) ? (
-                <iframe
-                  src={getVideoUrl(aula.modulo, aula.id)!}
-                  className="h-full w-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={aula.titulo}
-                />
-              ) : (
-              <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-                <div className="text-center">
-                  <Youtube className="mx-auto mb-4 text-orange-500" size={64} />
-                  <p className="text-lg font-semibold text-white">Vídeo da Aula</p>
-                  <p className="mt-2 text-sm text-white/60">
-                    Duração: {aula.duracao}
-                  </p>
-                  <p className="mt-4 text-xs text-white/40">
-                    Vídeo será adicionado em breve
-                  </p>
-                </div>
-              </div>
-              )}
+              <VideoPlayer 
+                moduleNumber={aula.modulo} 
+                lessonNumber={aula.id} 
+                title={aula.titulo}
+              />
             </div>
           </div>
 
+          {/* Interações com a Aula */}
+          <VideoInteractionPanel videoId={aula.id} studentName="Aluno" studentCpf="00000000000" />
+
           {/* Conteúdo */}
-          <div className="rounded-xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-            <h2 className="mb-4 font-bold text-white">Conteúdo:</h2>
+          <div className="rounded-xl border border-border bg-card/50 p-6">
+            <h2 className="mb-4 font-bold text-foreground">Conteúdo:</h2>
             <div className="space-y-3">
               {aula.conteudo.topicos.map((topico, i) => (
                 <div key={i} className="border-l-2 border-orange-500/30 pl-4">
-                  <h3 className="mb-1 font-semibold text-white">{topico.titulo}</h3>
-                  <p className="text-sm text-white/70">{topico.descricao}</p>
+                  <h3 className="mb-1 font-semibold text-foreground">{topico.titulo}</h3>
+                  <p className="text-sm text-muted-foreground">{topico.descricao}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Frase chave */}
-          <div className="rounded-xl border border-white/10 bg-gradient-to-br from-[#F5F1E8]/10 to-transparent p-6 text-center">
+          <div className="rounded-xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-6 text-center">
             <div className="mx-auto mb-3 text-3xl">💡</div>
-            <p className="font-semibold text-[#F5F1E8]">"{aula.conteudo.fraseChave}"</p>
+            <p className="font-semibold text-foreground">"{aula.conteudo.fraseChave}"</p>
           </div>
 
           {/* Ações */}
@@ -1422,7 +1616,7 @@ function AulasPage() {
                 marcarComoConcluida(aula.id);
                 setAulaAtual(null);
               }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-6 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40"
             >
               <Check size={18} />
               {aulasCompletas.includes(aula.id) ? "Aula concluída" : "Marcar como concluída"}
@@ -1430,7 +1624,7 @@ function AulasPage() {
             {aula.id < aulas.length && (
               <button
                 onClick={() => setAulaAtual(aula.id + 1)}
-                className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
+                className="flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-6 py-3 font-semibold text-foreground transition hover:bg-muted"
               >
                 Próxima aula
                 <ChevronRight size={18} />
@@ -1445,31 +1639,31 @@ function AulasPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-8">
-        <h1 className="mb-2 font-bold text-white">Aulas</h1>
-        <p className="text-white/60">Comece pelo Módulo 0 — Acendendo a Chama</p>
+        <h1 className="mb-2 font-bold text-foreground">Aulas</h1>
+        <p className="text-foreground/60">Comece pelo Módulo 0 — Acendendo a Chama</p>
       </div>
 
       {/* Card do Módulo 0 */}
       <div className="mb-8 overflow-hidden rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-transparent to-red-500/10">
-        <div className="border-b border-white/10 p-6">
+        <div className="border-b border-border/10 p-6">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/30 to-red-500/30 text-2xl">
               🔥
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-white">Módulo 0 — Acendendo a Chama</h2>
+                <h2 className="font-semibold text-foreground">Módulo 0 — Acendendo a Chama</h2>
                 <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-semibold text-green-400">
                   GRATUITO
                 </span>
               </div>
-              <p className="text-white/60">Comece por aqui — Mentalidade e visão antes do código</p>
+              <p className="text-foreground/60">Comece por aqui — Mentalidade e visão antes do código</p>
             </div>
           </div>
 
           {/* Progresso do módulo */}
           <div className="mt-4 flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/20">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-background/20">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progressoModulo0}%` }}
@@ -1489,21 +1683,21 @@ function AulasPage() {
               <button
                 key={aula.id}
                 onClick={() => setAulaAtual(aula.id)}
-                className="flex w-full items-center gap-4 p-6 text-left transition hover:bg-white/5"
+                className="flex w-full items-center gap-4 p-6 text-left transition hover:bg-muted/5"
               >
                 {/* Número/Check */}
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-semibold ${
                   concluida
                     ? "bg-green-500/20 text-green-400"
-                    : "bg-white/5 text-white/40"
+                    : "bg-muted/5 text-foreground/40"
                 }`}>
                   {concluida ? <Check size={18} /> : index + 1}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1">
-                  <h3 className="mb-1 font-semibold text-white">{aula.titulo}</h3>
-                  <div className="flex items-center gap-2 text-white/60">
+                  <h3 className="mb-1 font-semibold text-foreground">{aula.titulo}</h3>
+                  <div className="flex items-center gap-2 text-foreground/60">
                     <Play size={14} />
                     <span className="text-xs">{aula.duracao}</span>
                     {concluida && (
@@ -1516,7 +1710,7 @@ function AulasPage() {
                 </div>
 
                 {/* Ícone */}
-                <ChevronRight className="shrink-0 text-white/40" size={20} />
+                <ChevronRight className="shrink-0 text-foreground/40" size={20} />
               </button>
             );
           })}
@@ -1524,14 +1718,14 @@ function AulasPage() {
 
         {/* Footer */}
         {progressoModulo0 === 100 && (
-          <div className="border-t border-white/10 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-6">
+          <div className="border-t border-border/10 bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-6">
             <div className="flex items-center gap-3">
               <div className="text-2xl">🎉</div>
               <div className="flex-1">
-                <h4 className="font-semibold text-white">Módulo 0 completo!</h4>
-                <p className="text-white/60">Você está pronto para começar o Módulo 1</p>
+                <h4 className="font-semibold text-foreground">Módulo 0 completo!</h4>
+                <p className="text-foreground/60">Você está pronto para começar o Módulo 1</p>
               </div>
-              <button className="rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40">
+              <button className="rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-semibold text-foreground shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40">
                 Ir para Módulo 1
               </button>
             </div>
@@ -1540,10 +1734,10 @@ function AulasPage() {
       </div>
 
       {/* Próximos módulos (bloqueados) */}
-      <div className="rounded-xl border border-white/10 bg-black/20 p-8 text-center opacity-50">
-        <Lock className="mx-auto mb-4 text-white/40" size={48} />
-        <h3 className="mb-2 font-semibold text-white">Outros módulos em breve</h3>
-        <p className="text-white/60">Complete o Módulo 0 para desbloquear o Módulo 1</p>
+      <div className="rounded-xl border border-border/10 bg-background/20 p-8 text-center opacity-50">
+        <Lock className="mx-auto mb-4 text-foreground/40" size={48} />
+        <h3 className="mb-2 font-semibold text-foreground">Outros módulos em breve</h3>
+        <p className="text-foreground/60">Complete o Módulo 0 para desbloquear o Módulo 1</p>
       </div>
     </div>
   );
@@ -1552,11 +1746,11 @@ function AulasPage() {
 function DesafiosPage() {
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-6 font-bold text-white">Desafios</h1>
-      <div className="rounded-xl border border-white/10 bg-[#F5F1E8]/5 p-8 text-center">
+      <h1 className="mb-6 font-bold text-foreground">Desafios</h1>
+      <div className="rounded-xl border border-border bg-card/50 p-8 text-center">
         <Target className="mx-auto mb-4 text-orange-400" size={48} />
-        <h3 className="mb-2 font-semibold text-white">Desafios em desenvolvimento</h3>
-        <p className="text-white/60">Novos desafios técnicos serão adicionados em breve</p>
+        <h3 className="mb-2 font-semibold text-foreground">Desafios em desenvolvimento</h3>
+        <p className="text-foreground/60">Novos desafios técnicos serão adicionados em breve</p>
       </div>
     </div>
   );
@@ -1565,7 +1759,7 @@ function DesafiosPage() {
 function ConquistasPage() {
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="mb-6 font-bold text-white">Conquistas</h1>
+      <h1 className="mb-6 font-bold text-foreground">Conquistas</h1>
       <GamificationPanel />
     </div>
   );
@@ -1574,7 +1768,7 @@ function ConquistasPage() {
 function MateriaisPage() {
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-6 font-bold text-white">Materiais</h1>
+      <h1 className="mb-6 font-bold text-foreground">Materiais</h1>
       <EmptyState
         icon={Folder}
         title="Materiais em breve"
@@ -1650,18 +1844,18 @@ function AwsStudyPage() {
         <div className="mb-2 flex flex-wrap items-center gap-3 text-orange-300">
           <Cloud size={18} />
           <span className="text-sm font-semibold">AWS Study Hub</span>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">CLF + arquitetura segura</span>
+          <span className="rounded-full bg-muted/10 px-3 py-1 text-xs font-semibold text-foreground/80">CLF + arquitetura segura</span>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Prática guiada e simulados</h1>
-            <p className="text-white/70">Sequência inspirada no protótipo AWS-FIGMA: fundamentos, diagramas, labs seguros e simulador.</p>
+            <h1 className="text-2xl font-bold text-foreground">Prática guiada e simulados</h1>
+            <p className="text-foreground/70">Sequência inspirada no protótipo AWS-FIGMA: fundamentos, diagramas, labs seguros e simulador.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-orange-500/30 transition hover:shadow-lg">
+            <button className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 text-sm font-semibold text-foreground shadow-orange-500/30 transition hover:shadow-lg">
               <Play size={16} /> Iniciar simulado
             </button>
-            <button className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-orange-400/60">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-border/15 bg-muted/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-orange-400/60">
               <BookOpen size={16} /> Ver trilha
             </button>
           </div>
@@ -1669,53 +1863,53 @@ function AwsStudyPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-3 flex items-center justify-between text-sm text-white/70">
+        <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
+          <div className="mb-3 flex items-center justify-between text-sm text-foreground/70">
             <span>Taxa de acerto</span>
             <BarChart3 size={16} className="text-orange-300" />
           </div>
-          <div className="text-3xl font-bold text-white">78%</div>
-          <p className="text-xs text-white/60">Meta 72%+ (CLF). Treine fraquezas primeiro.</p>
+          <div className="text-3xl font-bold text-foreground">78%</div>
+          <p className="text-xs text-foreground/60">Meta 72%+ (CLF). Treine fraquezas primeiro.</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-3 flex items-center justify-between text-sm text-white/70">
+        <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
+          <div className="mb-3 flex items-center justify-between text-sm text-foreground/70">
             <span>Simulados feitos</span>
             <Trophy size={16} className="text-yellow-300" />
           </div>
-          <div className="text-3xl font-bold text-white">3</div>
-          <p className="text-xs text-white/60">Use modo rápido de 20 questões para revisão diária.</p>
+          <div className="text-3xl font-bold text-foreground">3</div>
+          <p className="text-xs text-foreground/60">Use modo rápido de 20 questões para revisão diária.</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-3 flex items-center justify-between text-sm text-white/70">
+        <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
+          <div className="mb-3 flex items-center justify-between text-sm text-foreground/70">
             <span>Média de tempo</span>
             <Clock size={16} className="text-blue-300" />
           </div>
-          <div className="text-3xl font-bold text-white">1m 05s</div>
-          <p className="text-xs text-white/60">Por questão. Priorize leitura das palavras-chave.</p>
+          <div className="text-3xl font-bold text-foreground">1m 05s</div>
+          <p className="text-xs text-foreground/60">Por questão. Priorize leitura das palavras-chave.</p>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-2xl border border-border/10 bg-muted/5 p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">Trilha inspirada no protótipo AWSFIGMA</h3>
-                <p className="text-sm text-white/70">Foundations → Core Services → Segurança/Custo → Exam Prep</p>
+                <h3 className="text-lg font-semibold text-foreground">Trilha inspirada no protótipo AWSFIGMA</h3>
+                <p className="text-sm text-foreground/70">Foundations → Core Services → Segurança/Custo → Exam Prep</p>
               </div>
               <Brain size={20} className="text-orange-300" />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {tracks.map((track) => (
-                <div key={track.name} className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div key={track.name} className="rounded-xl border border-border/10 bg-background/30 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-orange-200/80 font-semibold">{track.name}</p>
-                      <p className="text-sm text-white/80">{track.focus}</p>
+                      <p className="text-sm text-foreground/80">{track.focus}</p>
                     </div>
-                    <span className="text-sm font-semibold text-white/80">{track.progress}%</span>
+                    <span className="text-sm font-semibold text-foreground/80">{track.progress}%</span>
                   </div>
-                  <div className="mt-3 h-2 w-full rounded-full bg-white/10">
+                  <div className="mt-3 h-2 w-full rounded-full bg-muted/10">
                     <div className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500" style={{ width: `${track.progress}%` }} />
                   </div>
                 </div>
@@ -1723,25 +1917,25 @@ function AwsStudyPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-2xl border border-border/10 bg-muted/5 p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">Configurações de simulado</h3>
-                <p className="text-sm text-white/70">Use o fluxo de Exam Simulator do AWSFIGMA: timer + aprovação 72%.</p>
+                <h3 className="text-lg font-semibold text-foreground">Configurações de simulado</h3>
+                <p className="text-sm text-foreground/70">Use o fluxo de Exam Simulator do AWSFIGMA: timer + aprovação 72%.</p>
               </div>
               <Target size={20} className="text-orange-300" />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {practicePresets.map((preset) => (
-                <div key={preset.title} className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div key={preset.title} className="rounded-xl border border-border/10 bg-background/30 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-white">{preset.title}</p>
+                    <p className="text-sm font-semibold text-foreground">{preset.title}</p>
                     <span className="rounded-full bg-orange-500/15 px-2 py-1 text-xs text-orange-200">Meta {preset.target}</span>
                   </div>
-                  <p className="text-xs text-white/60 mt-1">{preset.questions} questões • {preset.timer} min</p>
+                  <p className="text-xs text-foreground/60 mt-1">{preset.questions} questões • {preset.timer} min</p>
                   <div className="mt-3 flex gap-2">
-                    <button className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:border-orange-400/60">Praticar</button>
-                    <button className="flex-1 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 text-xs font-semibold text-white shadow-orange-500/30 hover:shadow-lg">Simulado</button>
+                    <button className="flex-1 rounded-lg border border-border/10 bg-muted/5 px-3 py-2 text-xs font-semibold text-foreground hover:border-orange-400/60">Praticar</button>
+                    <button className="flex-1 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 text-xs font-semibold text-foreground shadow-orange-500/30 hover:shadow-lg">Simulado</button>
                   </div>
                 </div>
               ))}
@@ -1752,11 +1946,11 @@ function AwsStudyPage() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-red-500/10 p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Arquitetura de referência</h3>
+              <h3 className="text-lg font-semibold text-foreground">Arquitetura de referência</h3>
               <Shield size={20} className="text-orange-200" />
             </div>
-            <p className="text-sm text-white/70">Snapshot do Diagram View (AWSFIGMA): serviços e guardrails para Free Tier seguro.</p>
-            <ul className="mt-3 space-y-2 text-sm text-white/80">
+            <p className="text-sm text-foreground/70">Snapshot do Diagram View (AWSFIGMA): serviços e guardrails para Free Tier seguro.</p>
+            <ul className="mt-3 space-y-2 text-sm text-foreground/80">
               {diagramServices.map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <span className="mt-1 h-2 w-2 rounded-full bg-orange-400" />
@@ -1766,21 +1960,21 @@ function AwsStudyPage() {
             </ul>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h3 className="text-lg font-semibold text-white">Labs rápidos (seguros)</h3>
-            <p className="text-sm text-white/70">Guia inspirado na Study Plan do protótipo.</p>
+          <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
+            <h3 className="text-lg font-semibold text-foreground">Labs rápidos (seguros)</h3>
+            <p className="text-sm text-foreground/70">Guia inspirado na Study Plan do protótipo.</p>
             <div className="mt-3 space-y-3">
               {labs.map((lab) => (
-                <div key={lab.title} className="rounded-xl border border-white/10 bg-black/30 p-3">
+                <div key={lab.title} className="rounded-xl border border-border/10 bg-background/30 p-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-white">{lab.title}</p>
+                    <p className="text-sm font-semibold text-foreground">{lab.title}</p>
                     {lab.safe ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-1 text-[11px] font-semibold text-green-200">
                         <Shield size={12} /> Free Tier safe
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-xs text-white/60">{lab.desc}</p>
+                  <p className="text-xs text-foreground/60">{lab.desc}</p>
                 </div>
               ))}
             </div>
@@ -1789,10 +1983,10 @@ function AwsStudyPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h3 className="mb-2 text-lg font-semibold text-white">Plano de estudo</h3>
-          <p className="text-sm text-white/70">Siga a ordem: Foundations → Core Services → Segurança/Custo → Simulados + revisão.</p>
-          <div className="mt-3 space-y-2 text-sm text-white/80">
+        <div className="rounded-2xl border border-border/10 bg-muted/5 p-6">
+          <h3 className="mb-2 text-lg font-semibold text-foreground">Plano de estudo</h3>
+          <p className="text-sm text-foreground/70">Siga a ordem: Foundations → Core Services → Segurança/Custo → Simulados + revisão.</p>
+          <div className="mt-3 space-y-2 text-sm text-foreground/80">
             <p>1) Revisar notas dos simulados e reforçar tópicos fracos.</p>
             <p>2) Criar um diagrama simples da arquitetura de referência.</p>
             <p>3) Rodar 1 simulado rápido por dia (20 questões).</p>
@@ -1800,9 +1994,9 @@ function AwsStudyPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-6">
-          <h3 className="mb-2 text-lg font-semibold text-white">Checklist de segurança e custo</h3>
-          <ul className="space-y-2 text-sm text-white/70">
+        <div className="rounded-2xl border border-border/10 bg-background/30 p-6">
+          <h3 className="mb-2 text-lg font-semibold text-foreground">Checklist de segurança e custo</h3>
+          <ul className="space-y-2 text-sm text-foreground/70">
             <li>• Ativar MFA no root e criar usuário IAM administrativo.</li>
             <li>• Criar budgets + billing alerts antes do primeiro lab.</li>
             <li>• Usar roles específicas por lab (princípio do mínimo privilégio).</li>
@@ -1813,9 +2007,9 @@ function AwsStudyPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 to-red-500/10 p-6">
-          <h3 className="mb-2 text-lg font-semibold text-white">Protótipo AWS Study (Figma)</h3>
-          <p className="mb-4 text-sm text-white/70">Embed do fluxo AWSFIGMA para visualizar diagramas, simulador e review.</p>
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-black/40">
+          <h3 className="mb-2 text-lg font-semibold text-foreground">Protótipo AWS Study (Figma)</h3>
+          <p className="mb-4 text-sm text-foreground/70">Embed do fluxo AWSFIGMA para visualizar diagramas, simulador e review.</p>
+          <div className="overflow-hidden rounded-xl border border-border/10 bg-background/40">
             <iframe
               src={figmaUrl}
               className="h-72 w-full"
@@ -1824,9 +2018,9 @@ function AwsStudyPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h3 className="mb-2 text-lg font-semibold text-white">Recursos oficiais</h3>
-          <p className="mb-4 text-sm text-white/70">Links espelhando a seção "Resources" do protótipo.</p>
+        <div className="rounded-2xl border border-border/10 bg-muted/5 p-6">
+          <h3 className="mb-2 text-lg font-semibold text-foreground">Recursos oficiais</h3>
+          <p className="mb-4 text-sm text-foreground/70">Links espelhando a seção "Resources" do protótipo.</p>
           <div className="space-y-3">
             {resources.map((item) => (
               <a
@@ -1834,24 +2028,24 @@ function AwsStudyPage() {
                 href={item.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white transition hover:border-orange-400/60 hover:bg-black/40"
+                className="flex items-center justify-between rounded-xl border border-border/10 bg-background/30 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-orange-400/60 hover:bg-background/40"
               >
                 <div>
                   <p>{item.title}</p>
-                  <p className="text-xs font-normal text-white/60">{item.desc}</p>
+                  <p className="text-xs font-normal text-foreground/60">{item.desc}</p>
                 </div>
                 <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[11px] font-semibold text-orange-200">{item.badge}</span>
               </a>
             ))}
           </div>
-          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4">
-            <h4 className="text-sm font-semibold text-white">Portal AWS Training</h4>
-            <p className="text-xs text-white/70 mb-3">Aulas, eventos ao vivo e certificações.</p>
+          <div className="mt-4 rounded-xl border border-border/10 bg-background/30 p-4">
+            <h4 className="text-sm font-semibold text-foreground">Portal AWS Training</h4>
+            <p className="text-xs text-foreground/70 mb-3">Aulas, eventos ao vivo e certificações.</p>
             <a
               href="https://aws.amazon.com/training/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-orange-500/30 transition hover:shadow-lg"
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 text-sm font-semibold text-foreground shadow-orange-500/30 transition hover:shadow-lg"
             >
               Ir para o portal
               <ChevronRight size={16} />
@@ -1863,7 +2057,7 @@ function AwsStudyPage() {
   );
 }
 
-function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema }: { studentName: string; onLogout: () => void; temas: any[]; temaSelecionado: string; aplicarTema: (temaId: string) => void }) {
+function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema, restartTour }: { studentName: string; onLogout: () => void; temas: any[]; temaSelecionado: string; aplicarTema: (temaId: string) => void; restartTour: () => void }) {
   const [notificacoes, setNotificacoes] = useState(true);
   const [lembreteDiario, setLembreteDiario] = useState(true);
 
@@ -1914,7 +2108,7 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
                 {/* Indicador ativo */}
                 {temaSelecionado === tema.id && (
                   <div className="absolute right-2 top-2 rounded-full bg-gradient-to-br from-orange-500 to-red-500 p-1.5 shadow-lg">
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="h-3 w-3 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -1964,7 +2158,7 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
               <p className="font-medium text-foreground">Alterar senha</p>
               <p className="text-xs text-foreground/60">Última alteração: há 30 dias</p>
             </div>
-            <ChevronRight className="text-white/40" size={20} />
+            <ChevronRight className="text-foreground/40" size={20} />
           </button>
         </div>
 
@@ -1978,7 +2172,7 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
             href="/privacidade"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 bg-orange-500 text-white transition hover:bg-orange-600"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 bg-orange-500 text-foreground transition hover:bg-orange-600"
           >
             <ChevronRight size={16} />
             Portal de Privacidade
@@ -1986,13 +2180,13 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
         </div>
 
         {/* Notificações */}
-        <div className="rounded-xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-          <h3 className="mb-4 font-semibold text-white">Notificações</h3>
+        <div className="rounded-xl border border-border bg-card/50 p-6">
+          <h3 className="mb-4 font-semibold text-foreground">Notificações</h3>
           <div className="space-y-3">
-            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10">
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-background/50 px-4 py-3 transition hover:bg-accent/50">
               <div>
-                <p className="font-medium text-white">E-mail de notificações</p>
-                <p className="text-xs text-white/50">Receber atualizações sobre novos conteúdos</p>
+                <p className="font-medium text-foreground">E-mail de notificações</p>
+                <p className="text-xs text-muted-foreground">Receber atualizações sobre novos conteúdos</p>
               </div>
               <input
                 type="checkbox"
@@ -2001,7 +2195,7 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
                 className="peer sr-only"
               />
               <div className={`relative h-6 w-11 rounded-full transition ${
-                notificacoes ? "bg-orange-500" : "bg-white/20"
+                notificacoes ? "bg-orange-500" : "bg-muted/20"
               }`}>
                 <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
                   notificacoes ? "left-5" : "left-0.5"
@@ -2009,10 +2203,10 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
               </div>
             </label>
 
-            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10">
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border/10 bg-muted/5 px-4 py-3 transition hover:bg-muted/10">
               <div>
-                <p className="font-medium text-white">Lembrete diário</p>
-                <p className="text-xs text-white/50">Receber lembrete para estudar</p>
+                <p className="font-medium text-foreground">Lembrete diário</p>
+                <p className="text-xs text-foreground/50">Receber lembrete para estudar</p>
               </div>
               <input
                 type="checkbox"
@@ -2021,7 +2215,7 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
                 className="peer sr-only"
               />
               <div className={`relative h-6 w-11 rounded-full transition ${
-                lembreteDiario ? "bg-orange-500" : "bg-white/20"
+                lembreteDiario ? "bg-orange-500" : "bg-muted/20"
               }`}>
                 <div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
                   lembreteDiario ? "left-5" : "left-0.5"
@@ -2032,49 +2226,62 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
         </div>
 
         {/* Preferências de estudo */}
-        <div className="rounded-xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-          <h3 className="mb-4 font-semibold text-white">Preferências de estudo</h3>
+        <div className="rounded-xl border border-border bg-card/50 p-6">
+          <h3 className="mb-4 font-semibold text-foreground">Preferências de estudo</h3>
           <div className="space-y-3">
-            <button className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10">
+            <button 
+              onClick={restartTour}
+              className="flex w-full items-center justify-between rounded-lg border border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-red-500/10 px-4 py-3 text-left transition hover:from-orange-500/20 hover:to-red-500/20"
+            >
               <div>
-                <p className="font-medium text-white">Meta diária</p>
-                <p className="text-xs text-white/50">30 minutos por dia</p>
+                <p className="font-medium text-foreground flex items-center gap-2">
+                  🔥 Tour de boas-vindas
+                </p>
+                <p className="text-xs text-foreground/50">Rever o guia inicial do programa</p>
               </div>
-              <ChevronRight className="text-white/40" size={20} />
+              <Play className="text-orange-400" size={20} />
             </button>
 
-            <button className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10">
+            <button className="flex w-full items-center justify-between rounded-lg border border-border/10 bg-muted/5 px-4 py-3 text-left transition hover:bg-muted/10">
               <div>
-                <p className="font-medium text-white">Horário preferido</p>
-                <p className="text-xs text-white/50">Noite (19h - 22h)</p>
+                <p className="font-medium text-foreground">Meta diária</p>
+                <p className="text-xs text-foreground/50">30 minutos por dia</p>
               </div>
-              <ChevronRight className="text-white/40" size={20} />
+              <ChevronRight className="text-foreground/40" size={20} />
+            </button>
+
+            <button className="flex w-full items-center justify-between rounded-lg border border-border/10 bg-muted/5 px-4 py-3 text-left transition hover:bg-muted/10">
+              <div>
+                <p className="font-medium text-foreground">Horário preferido</p>
+                <p className="text-xs text-foreground/50">Noite (19h - 22h)</p>
+              </div>
+              <ChevronRight className="text-foreground/40" size={20} />
             </button>
           </div>
         </div>
 
         {/* Links úteis */}
-        <div className="rounded-xl border border-white/10 bg-[#F5F1E8]/5 p-6">
-          <h3 className="mb-4 font-semibold text-white">Suporte & Ajuda</h3>
+        <div className="rounded-xl border border-border bg-card/50 p-6">
+          <h3 className="mb-4 font-semibold text-foreground">Suporte & Ajuda</h3>
           <div className="space-y-2">
             <a
               href="https://www.youtube.com/@Rodrigomuinhosdev"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-white/70 transition hover:bg-white/5 hover:text-white"
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-foreground/70 transition hover:bg-muted/5 hover:text-foreground"
             >
               <Youtube size={18} className="text-red-500" />
               Canal no YouTube
             </a>
-            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-white/70 transition hover:bg-white/5 hover:text-white">
+            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-foreground/70 transition hover:bg-muted/5 hover:text-foreground">
               <MessageCircle size={18} />
               Central de Ajuda
             </button>
-            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-white/70 transition hover:bg-white/5 hover:text-white">
+            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-foreground/70 transition hover:bg-muted/5 hover:text-foreground">
               <Folder size={18} />
               Política de Privacidade
             </button>
-            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-white/70 transition hover:bg-white/5 hover:text-white">
+            <button className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-left text-foreground/70 transition hover:bg-muted/5 hover:text-foreground">
               <BookOpen size={18} />
               Termos de Uso
             </button>
@@ -2090,14 +2297,296 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema 
         </button>
 
         {/* Footer com versão */}
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-          <p className="text-xs text-white/40">Bootcamp FLAME © 2024 • Versão 1.0.0</p>
+        <div className="rounded-xl border border-border/10 bg-muted/5 p-4 text-center">
+          <p className="text-xs text-foreground/40">Bootcamp FLAME © 2024 • Versão 1.0.0</p>
         </div>
       </div>
-      
-      {/* Onboarding Tour */}
-      <WelcomeTour onComplete={handleWelcomeComplete} />
-
     </div>
   );
 }
+
+// ========== COMPONENTE DE INTERAÇÃO COM VÍDEOS ==========
+
+interface VideoInteractionPanelProps {
+  videoId: number;
+  studentName: string;
+  studentCpf: string;
+}
+
+function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoInteractionPanelProps) {
+  const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratings, setRatings] = useState({ content: 0, audio: 0, video: 0 });
+  const [averageRatings, setAverageRatings] = useState({ contentAvg: 0, audioAvg: 0, videoAvg: 0, count: 0 });
+
+  useEffect(() => {
+    loadInteractions();
+  }, [videoId]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const refreshLikesCount = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/videos/${videoId}/likes/count`);
+        if (!res.ok) return;
+        const count = await res.json();
+        if (isActive) setLikesCount(typeof count === 'number' ? count : 0);
+      } catch {
+        // silencioso: contador só não atualiza em tempo real
+      }
+    };
+
+    // Mantém o contador atualizado para todos os usuários (sem precisar recarregar)
+    const intervalId = window.setInterval(refreshLikesCount, 4000);
+    refreshLikesCount();
+
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+    };
+  }, [videoId]);
+
+  const loadInteractions = async () => {
+    try {
+      // Carregar estatísticas
+      const statsRes = await fetch(`http://localhost:8080/api/videos/${videoId}/stats?studentCpf=${studentCpf}`);
+      const stats = await statsRes.json();
+      
+      setLikesCount(stats.totalLikes || 0);
+      setLiked(stats.userLiked || false);
+      setComments(stats.recentComments || []);
+      setAverageRatings({
+        contentAvg: stats.averageContentRating || 0,
+        audioAvg: stats.averageAudioRating || 0,
+        videoAvg: stats.averageVideoQualityRating || 0,
+        count: stats.totalRatings || 0
+      });
+
+      // Carregar avaliação do usuário
+      const ratingRes = await fetch(`http://localhost:8080/api/videos/${videoId}/rating?studentCpf=${studentCpf}`);
+      if (ratingRes.ok) {
+        const userRating = await ratingRes.json();
+        setRatings({
+          content: userRating.contentRating,
+          audio: userRating.audioRating,
+          video: userRating.videoQualityRating
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar interações:', error);
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/videos/${videoId}/like?studentCpf=${studentCpf}`, {
+        method: 'POST'
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.liked === 'boolean') setLiked(data.liked);
+      if (data && typeof data.totalLikes === 'number') setLikesCount(data.totalLikes);
+    } catch (error) {
+      console.error('Erro ao curtir:', error);
+    }
+  };
+
+  const handleComment = async () => {
+    if (!newComment.trim()) return;
+    
+    try {
+      const res = await fetch(`http://localhost:8080/api/videos/${videoId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentName, studentCpf, comment: newComment })
+      });
+      
+      if (res.ok) {
+        setNewComment('');
+        loadInteractions();
+      }
+    } catch (error) {
+      console.error('Erro ao comentar:', error);
+    }
+  };
+
+  const handleRating = async () => {
+    try {
+      await fetch(`http://localhost:8080/api/videos/${videoId}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentCpf,
+          contentRating: ratings.content,
+          audioRating: ratings.audio,
+          videoQualityRating: ratings.video
+        })
+      });
+      
+      setShowRatingModal(false);
+      loadInteractions();
+    } catch (error) {
+      console.error('Erro ao avaliar:', error);
+    }
+  };
+
+  const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          onClick={() => onChange(star)}
+          className="text-2xl transition hover:scale-110"
+        >
+          {star <= value ? '⭐' : '☆'}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Barra de ações */}
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+        <div className="flex gap-4">
+          <button
+            onClick={handleLike}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 font-semibold transition ${
+              liked
+                ? 'bg-primary/20 text-primary'
+                : 'bg-muted/30 text-foreground hover:bg-muted'
+            }`}
+          >
+            <Heart className={liked ? 'fill-current' : ''} size={20} />
+            {likesCount}
+          </button>
+          
+          <button
+            onClick={() => setShowRatingModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-muted/30 px-4 py-2 font-semibold text-foreground transition hover:bg-muted"
+          >
+            <Star size={20} />
+            Avaliar
+          </button>
+        </div>
+
+        {averageRatings.count > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Star className="text-primary" size={16} />
+            <span className="font-semibold text-foreground">
+              {((averageRatings.contentAvg + averageRatings.audioAvg + averageRatings.videoAvg) / 3).toFixed(1)}
+            </span>
+            <span>({averageRatings.count} {averageRatings.count === 1 ? 'avaliação' : 'avaliações'})</span>
+          </div>
+        )}
+      </div>
+
+      {/* Seção de comentários */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h3 className="mb-4 text-lg font-bold text-card-foreground">Comentários ({comments.length})</h3>
+        
+        {/* Input de novo comentário */}
+        <div className="mb-6 flex gap-3">
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleComment()}
+            placeholder="Deixe seu comentário..."
+            className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
+          <button
+            onClick={handleComment}
+            disabled={!newComment.trim()}
+            className="rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          >
+            Enviar
+          </button>
+        </div>
+
+        {/* Lista de comentários */}
+        <div className="space-y-4">
+          {comments.map((comment) => (
+            <div key={comment.id} className="rounded-lg border border-border bg-background/50 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-semibold text-foreground">{comment.studentName}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(comment.createdAt).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+              <p className="text-foreground">{comment.comment}</p>
+            </div>
+          ))}
+          
+          {comments.length === 0 && (
+            <p className="text-center text-muted-foreground">Seja o primeiro a comentar!</p>
+          )}
+        </div>
+      </div>
+
+      {/* Modal de Avaliação */}
+      {showRatingModal && (
+        <>
+          <div
+            onClick={() => setShowRatingModal(false)}
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed inset-4 z-50 m-auto flex h-fit max-h-[90vh] w-full max-w-lg items-center justify-center"
+          >
+            <div className="w-full rounded-2xl border border-border bg-card p-8 shadow-2xl">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-card-foreground">Avaliar Aula</h2>
+                <button
+                  onClick={() => setShowRatingModal(false)}
+                  className="text-muted-foreground transition hover:text-foreground"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-2 block font-semibold text-foreground">Qualidade do Conteúdo</label>
+                  <StarRating value={ratings.content} onChange={(v) => setRatings({ ...ratings, content: v })} />
+                </div>
+
+                <div>
+                  <label className="mb-2 block font-semibold text-foreground">Qualidade do Áudio</label>
+                  <StarRating value={ratings.audio} onChange={(v) => setRatings({ ...ratings, audio: v })} />
+                </div>
+
+                <div>
+                  <label className="mb-2 block font-semibold text-foreground">Qualidade da Imagem</label>
+                  <StarRating value={ratings.video} onChange={(v) => setRatings({ ...ratings, video: v })} />
+                </div>
+
+                <button
+                  onClick={handleRating}
+                  disabled={!ratings.content || !ratings.audio || !ratings.video}
+                  className="w-full rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+                >
+                  Enviar Avaliação
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Componentes vão aqui - removendo a linha duplicada do WelcomeTour
+

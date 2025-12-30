@@ -11,11 +11,27 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, currentView, onNavigate }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [stats, setStats] = useState(() => StatisticsManager.getStats());
+  const [stats, setStats] = useState({
+    level: 1,
+    totalXP: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    totalExams: 0,
+    totalQuestions: 0,
+    correctAnswers: 0,
+    overallAccuracy: 0,
+    badges: [],
+    examHistory: [],
+    topicProgress: {}
+  });
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   
-  // Update stats periodically to reflect changes
+  // Load stats on client side only
   useEffect(() => {
+    setMounted(true);
+    setStats(StatisticsManager.getStats());
+    
     const interval = setInterval(() => {
       setStats(StatisticsManager.getStats());
     }, 1000);
@@ -29,7 +45,7 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
   const xpForCurrentLevel = stats.level * stats.level * 50;
   const xpInCurrentLevel = stats.totalXP - xpForCurrentLevel;
   const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
-  const xpProgress = (xpInCurrentLevel / xpNeededForNextLevel) * 100;
+  const xpProgress = Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100);
   const unlockedBadges = stats.badges.filter(b => b.unlockedAt).length;
   const totalBadges = stats.badges.length;
 
@@ -45,20 +61,20 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
   ];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden">
+    <div className="flex h-screen bg-white overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-gradient-to-b from-slate-800 to-slate-900 border-r border-slate-700 flex flex-col transition-all duration-300 ${
+      <aside className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ${
         sidebarOpen ? 'w-72' : 'w-20'
       }`}>
         {/* Header */}
-        <div className="p-6 border-b border-slate-700">
+        <div className="p-6 border-b border-slate-200">
           {sidebarOpen ? (
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-2xl mx-auto mb-2">
                 🎓
               </div>
-              <h2 className="text-white font-bold">AWS Study</h2>
-              <p className="text-xs text-slate-400">Solutions Architect</p>
+              <h2 className="text-slate-900 font-bold">AWS Study</h2>
+              <p className="text-xs text-slate-500">Solutions Architect</p>
             </div>
           ) : (
             <div className="flex justify-center">
@@ -70,7 +86,7 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
         </div>
 
         {/* Level Progress */}
-        <div className="px-4 py-6 border-b border-slate-700">
+        <div className="px-4 py-6 border-b border-slate-200">
           {sidebarOpen ? (
             <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl p-4 shadow-lg">
               <div className="flex items-center gap-3 mb-3">
@@ -118,7 +134,7 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/50'
-                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
+                    : 'hover:bg-slate-100 text-slate-700'
                 }`}
               >
                 <Icon size={22} className={isActive ? 'text-white' : item.color} />
@@ -143,41 +159,41 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
 
         {/* Stats Summary */}
         {sidebarOpen && (
-          <div className="px-6 py-4 border-t border-slate-700 space-y-3">
+          <div className="px-6 py-4 border-t border-slate-200 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-600">
                 <Trophy size={16} className="text-yellow-500" />
                 <span>Provas</span>
               </div>
-              <span className="font-bold text-white">{stats.totalExams}</span>
+              <span className="font-bold text-slate-900">{stats.totalExams}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-600">
                 <TrendingUp size={16} className="text-green-500" />
                 <span>Acurácia</span>
               </div>
-              <span className="font-bold text-white">{stats.overallAccuracy.toFixed(1)}%</span>
+              <span className="font-bold text-slate-900">{stats.overallAccuracy.toFixed(1)}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-600">
                 <Flame size={16} className="text-orange-500" />
                 <span>Streak</span>
               </div>
-              <span className="font-bold text-white">{stats.currentStreak} dias</span>
+              <span className="font-bold text-slate-900">{stats.currentStreak} dias</span>
             </div>
           </div>
         )}
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-200">
           {sidebarOpen ? (
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all">
-              <Settings size={20} />
+            <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+              <Settings size={20} className="text-slate-700" />
               <span>Configurações</span>
             </button>
           ) : (
-            <button className="w-full flex justify-center p-3 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-xl transition-all">
-              <Settings size={20} />
+            <button className="w-full flex justify-center p-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+              <Settings size={20} className="text-slate-700" />
             </button>
           )}
         </div>

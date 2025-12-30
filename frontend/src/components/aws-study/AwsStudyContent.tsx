@@ -1,50 +1,28 @@
 "use client";
 
-import { HomeScreen } from '@/components/aws-study/HomeScreen';
-import { DiagramView } from '@/components/aws-study/DiagramView';
-import { TrainingMode } from '@/components/aws-study/TrainingMode';
-import { ExamSimulator } from '@/components/aws-study/ExamSimulator';
-import { StatsDashboard } from '@/components/aws-study/StatsDashboard';
-import { StudyPlan } from '@/components/aws-study/StudyPlan';
-import { Review } from '@/components/aws-study/Review';
+import React from 'react';
 
 interface AwsStudyContentProps {
   currentSection?: string;
 }
 
 export function AwsStudyContent({ currentSection = 'home' }: AwsStudyContentProps) {
-  // Renderizar componentes reais baseado na seção
-  const content = (() => {
-    switch (currentSection) {
-      case 'home':
-        return <HomeScreen />;
-      
-      case 'diagram':
-        return <DiagramView />;
-      
-      case 'training':
-        return <TrainingMode />;
-      
-      case 'exam':
-        return <ExamSimulator />;
-      
-      case 'stats':
-        return <StatsDashboard />;
-      
-      case 'study-plan':
-        return <StudyPlan />;
-      
-      case 'review':
-        return <Review />;
-      
-      default:
-        return <HomeScreen />;
-    }
-  })();
-
   return (
     <div data-testid="aws-study-content">
-      {content}
+      <div className="p-4">
+        <h2 className="text-xl font-semibold mb-4">
+          {currentSection === 'home' && 'AWS Learning Platform - Home'}
+          {currentSection === 'diagram' && 'Diagrama Interativo AWS'}
+          {currentSection === 'training' && 'Modo Treinamento'}
+          {currentSection === 'exam' && 'Simulador de Exame'}
+          {currentSection === 'stats' && 'Estatísticas de Estudo'}
+          {currentSection === 'study-plan' && 'Plano de Estudos'}
+          {currentSection === 'review' && 'Revisão de Erros'}
+        </h2>
+        <p className="text-gray-600">
+          Conteúdo da seção: {currentSection}
+        </p>
+      </div>
     </div>
   );
 }

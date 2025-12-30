@@ -15,22 +15,29 @@ interface OnboardingTourProps {
   steps: OnboardingStep[];
   onComplete: () => void;
   storageKey?: string;
+  forceShow?: boolean;
 }
 
 export function OnboardingTour({ 
   steps, 
   onComplete, 
-  storageKey = 'onboarding_completed' 
+  storageKey = 'onboarding_completed',
+  forceShow = false
 }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const completed = localStorage.getItem(storageKey);
-    if (!completed) {
+    if (forceShow) {
       setIsVisible(true);
+      setCurrentStep(0); // Reset para o primeiro passo
+    } else {
+      const completed = localStorage.getItem(storageKey);
+      if (!completed) {
+        setIsVisible(true);
+      }
     }
-  }, [storageKey]);
+  }, [storageKey, forceShow]);
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -188,7 +195,7 @@ export function OnboardingTour({
 }
 
 // Componente de exemplo com steps pré-definidos
-export function WelcomeTour({ onComplete }: { onComplete: () => void }) {
+export function WelcomeTour({ onComplete, forceShow }: { onComplete: () => void; forceShow?: boolean }) {
   const steps: OnboardingStep[] = [
     {
       title: "🔥 Bem-vindo ao Bootcamp Flame!",
@@ -212,5 +219,5 @@ export function WelcomeTour({ onComplete }: { onComplete: () => void }) {
     },
   ];
 
-  return <OnboardingTour steps={steps} onComplete={onComplete} storageKey="welcome_tour" />;
+  return <OnboardingTour steps={steps} onComplete={onComplete} storageKey="welcome_tour" forceShow={forceShow} />;
 }

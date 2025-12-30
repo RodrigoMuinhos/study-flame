@@ -11,6 +11,8 @@ public class ExamQuestionDTO {
     private String domain;
     private String difficulty;
     private Boolean multipleChoice;
+    private String topic;
+    private String status;
     
     // Constructors
     public ExamQuestionDTO() {}
@@ -25,6 +27,21 @@ public class ExamQuestionDTO {
         this.domain = domain;
         this.difficulty = difficulty;
         this.multipleChoice = multipleChoice;
+    }
+
+    public ExamQuestionDTO(String id, String question, List<String> options, String correctAnswer,
+                          String explanation, String domain, String difficulty, Boolean multipleChoice,
+                          String topic, String status) {
+        this.id = id;
+        this.question = question;
+        this.options = options;
+        this.correctAnswer = correctAnswer;
+        this.explanation = explanation;
+        this.domain = domain;
+        this.difficulty = difficulty;
+        this.multipleChoice = multipleChoice;
+        this.topic = topic;
+        this.status = status;
     }
     
     // Getters and Setters
@@ -90,5 +107,21 @@ public class ExamQuestionDTO {
     
     public void setMultipleChoice(Boolean multipleChoice) {
         this.multipleChoice = multipleChoice;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

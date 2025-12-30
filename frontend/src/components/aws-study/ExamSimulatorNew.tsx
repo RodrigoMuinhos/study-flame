@@ -4,11 +4,11 @@ import { ExamTimer } from './ExamTimer';
 import { QuestionNavigator } from './QuestionNavigator';
 import { ExamQuestionCard } from './ExamQuestionCard';
 import { ExamResultsScreenNew } from './ExamResultsScreenNew';
-import { examQuestions } from '@/data/examQuestions';
 import { ExamResult, ExamQuestion } from '@/types/aws-study';
 import { ExamConfig } from './ExamConfigScreen';
 import { StatisticsManager } from '@/utils/statisticsManager';
 import { ExamHistory } from '@/types/aws-study';
+import { awsExamService } from '@/services/api';
 
 interface ExamSimulatorNewProps {
   config: ExamConfig;
@@ -17,73 +17,170 @@ interface ExamSimulatorNewProps {
 }
 
 export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: ExamSimulatorNewProps) {
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  const getQuestions = () => {
-    let questions = [...examQuestions];
-
-    // Filtrar por pontos fracos se ativado
-    if (config.focusOnWeakness) {
-      const weakCategories = StatisticsManager.getRecommendedTopics();
-      const weakQuestions = questions.filter(q => weakCategories.includes(q.category));
-      const otherQuestions = questions.filter(q => !weakCategories.includes(q.category));
-      
-      // 70% de questões fracas, 30% de outras
-      const weakCount = Math.floor(config.questionsCount * 0.7);
-      const otherCount = config.questionsCount - weakCount;
-      
-      questions = [
-        ...shuffleArray(weakQuestions).slice(0, weakCount),
-        ...shuffleArray(otherQuestions).slice(0, otherCount)
-      ];
-    }
-
-    // Limitar quantidade
-    questions = shuffleArray(questions).slice(0, config.questionsCount);
-    
-    return questions;
-  };
-
-  const [shuffledQuestions] = useState(() => getQuestions());
-  const [currentQuestion, setCurrentQuestion] = useState(1);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [shuffledQuestions, setShuffledQuestions] = useState<ExamQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [examResult, setExamResult] = useState<ExamResult | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [startTime] = useState(Date.now());
 
+  // Função para embaralhar array
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+  // Buscar questões do banco ao montar o componente
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
+        
+        let questions: ExamQuestion[] = [];
+        
+        // Se modo misto estiver habilitado e tiver topicMix configurado
+        if (config.mixedMode && config.topicMix && config.topicMix.length > 0) {
+          questions = await awsExamService.getMixedQuestions(config.topicMix);
+        } else {
+          // Modo simples - busca questões aleatórias
+          questions = await awsExamService.getRandomQuestions(config.questionsCount);
+        }
+        
+        // Embaralhar as opções de cada questão
+        const questionsWithShuffledOptions = questions.map(q => {
+          const filteredOptions = q.options.filter(opt => opt && opt.trim() !== '').slice(0, 4);
+          const shuffledOptions = shuffleArray(filteredOptions);
+          
+          return {
+            ...q,
+            options: shuffledOptions
+          };
+        });
+        
+        setShuffledQuestions(questionsWithShuffledOptions);
+        setError(null);
+      } catch (err) {
+        console.error('Erro ao buscar questões:', err);
+        setError('Erro ao carregar questões. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [config.questionsCount, config.mixedMode, config.topicMix]);
+
+  // Scroll para o topo ao mudar de questão
+  useEffect(() => {
+    if (!loading && shuffledQuestions.length > 0) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentQuestionIndex, loading, shuffledQuestions.length]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Carregando questões...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Erro ao Carregar</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={onBackToConfig}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-semibold"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const totalQuestions = shuffledQuestions.length;
-  const answeredQuestions = new Set(Object.keys(answers).map(Number));
-  const currentQuestionData = shuffledQuestions.find(q => q.id === currentQuestion);
+  const answeredQuestions = new Set(Object.keys(answers));
+  const currentQuestionData = shuffledQuestions[currentQuestionIndex];
+  const currentQuestion = currentQuestionIndex + 1; // 1-based para display
+
+  // Calcular questões corretas e incorretas para o navegador
+  const correctQuestions = new Set<number>();
+  const incorrectQuestions = new Set<number>();
+  if (config.feedbackEnabled) {
+    shuffledQuestions.forEach((q, index) => {
+      if (answers[q.id]) {
+        const questionNumber = index + 1;
+        const optionLabels = ['A', 'B', 'C', 'D'];
+        const selectedLetter = answers[q.id];
+        const letterIndex = optionLabels.indexOf(selectedLetter);
+        
+        // Pegar o texto da opção selecionada
+        const filteredOptions = q.options.filter(opt => opt && opt.trim() !== '').slice(0, 4);
+        const selectedOptionText = letterIndex >= 0 && letterIndex < filteredOptions.length 
+          ? filteredOptions[letterIndex] 
+          : '';
+        
+        // Encontrar qual letra corresponde à resposta correta
+        const correctIndex = filteredOptions.findIndex(opt => opt === q.correctAnswer);
+        const correctLetter = correctIndex >= 0 ? optionLabels[correctIndex] : 'N/A';
+        
+        console.log('Questão', questionNumber, ':', {
+          'Opções filtradas': filteredOptions,
+          'Letra selecionada': selectedLetter,
+          'Índice da letra': letterIndex,
+          'Texto selecionado': selectedOptionText,
+          'Resposta correta (texto)': q.correctAnswer,
+          'Índice da resposta correta': correctIndex,
+          'Letra correta': correctLetter,
+          'Acertou?': selectedOptionText === q.correctAnswer
+        });
+        
+        if (selectedOptionText === q.correctAnswer) {
+          correctQuestions.add(questionNumber);
+        } else {
+          incorrectQuestions.add(questionNumber);
+        }
+      }
+    });
+  }
 
   const handleAnswerSelect = (answer: string) => {
+    if (!currentQuestionData) return;
     setAnswers(prev => ({
       ...prev,
-      [currentQuestion]: answer
+      [currentQuestionData.id]: answer
     }));
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < totalQuestions) {
-      setCurrentQuestion(prev => prev + 1);
+    if (currentQuestionIndex < totalQuestions - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
   const handlePreviousQuestion = () => {
-    if (currentQuestion > 1) {
-      setCurrentQuestion(prev => prev - 1);
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
     }
   };
 
-  const handleQuestionSelect = (questionNumber: number) => {
-    setCurrentQuestion(questionNumber);
+  const handleQuestionSelect = (questionIndex: number) => {
+    setCurrentQuestionIndex(questionIndex);
   };
 
   const calculateResults = (): ExamResult => {
@@ -93,23 +190,33 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
     const categoryPerformance: Record<string, { correct: number; total: number }> = {};
 
     shuffledQuestions.forEach(question => {
-      const selectedAnswer = answers[question.id] || '';
-      const isCorrect = selectedAnswer === question.correctAnswer;
+      const selectedLetter = answers[question.id] || '';
+      const optionLabels = ['A', 'B', 'C', 'D'];
+      const letterIndex = optionLabels.indexOf(selectedLetter);
+      
+      // Converter letra para texto da opção
+      const filteredOptions = question.options.filter(opt => opt && opt.trim() !== '').slice(0, 4);
+      const selectedAnswerText = letterIndex >= 0 && letterIndex < filteredOptions.length 
+        ? filteredOptions[letterIndex] 
+        : '';
+      
+      const isCorrect = selectedAnswerText === question.correctAnswer;
       
       if (isCorrect) correctAnswers++;
 
       resultAnswers[question.id] = {
-        selected: selectedAnswer,
+        selected: selectedLetter,
         correct: question.correctAnswer,
         isCorrect
       };
 
-      // Estatísticas por categoria
-      if (!categoryPerformance[question.category]) {
-        categoryPerformance[question.category] = { correct: 0, total: 0 };
+      // Estatísticas por domínio
+      const domainKey = question.domain ?? 'general';
+      if (!categoryPerformance[domainKey]) {
+        categoryPerformance[domainKey] = { correct: 0, total: 0 };
       }
-      categoryPerformance[question.category].total++;
-      if (isCorrect) categoryPerformance[question.category].correct++;
+      categoryPerformance[domainKey].total++;
+      if (isCorrect) categoryPerformance[domainKey].correct++;
     });
 
     const score = correctAnswers;
@@ -118,7 +225,7 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
     // Salvar no histórico
     const examHistory: ExamHistory = {
       id: `exam_${Date.now()}`,
-      date: Date.now(),
+      date: new Date(),
       score,
       totalQuestions,
       correctAnswers,
@@ -162,32 +269,48 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
     setIsFinished(true);
   };
 
-  const handleReviewQuestion = (questionId: number) => {
+  const handleReviewQuestion = (questionId: string) => {
     setReviewMode(true);
-    setCurrentQuestion(questionId);
+    const index = shuffledQuestions.findIndex(q => q.id === questionId);
+    if (index !== -1) {
+      setCurrentQuestionIndex(index);
+    }
   };
 
   const handleRetakeExam = () => {
     onBackToConfig();
   };
 
+  // Converter ExamQuestion para formato compatível com ExamResultsScreenNew
+  const convertQuestionsForResults = (questions: ExamQuestion[]) => {
+    return questions.map(q => ({
+      ...q,
+      context: `${q.domain || 'AWS'} | ${q.difficulty || 'Medium'}`,
+      category: q.domain || q.category || 'AWS',
+      options: q.options
+        .filter(opt => opt && opt.trim() !== '')
+        .slice(0, 4)
+        .map((text, index) => ({
+          label: String.fromCharCode(65 + index), // A, B, C, D
+          text: text
+        }))
+    }));
+  };
+
   // Resultados
   if (isFinished && examResult && !reviewMode) {
+    const convertedQuestions = convertQuestionsForResults(shuffledQuestions);
+    
     return (
       <ExamResultsScreenNew
         result={examResult}
-        questions={shuffledQuestions}
+        questions={convertedQuestions as any}
         onReviewQuestion={handleReviewQuestion}
         onRetakeExam={handleRetakeExam}
         onBackToDiagram={onBackToDiagram}
       />
     );
   }
-
-  // Scroll para o topo ao mudar de questão
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentQuestion]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -252,6 +375,9 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
             currentQuestion={currentQuestion}
             answeredQuestions={answeredQuestions}
             onQuestionSelect={handleQuestionSelect}
+            correctQuestions={correctQuestions}
+            incorrectQuestions={incorrectQuestions}
+            showFeedback={config.feedbackEnabled && !reviewMode}
           />
 
           {/* Botão finalizar */}
@@ -284,9 +410,10 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
             <>
               <ExamQuestionCard
                 question={currentQuestionData}
-                selectedAnswer={answers[currentQuestion] || null}
+                questionNumber={currentQuestion}
+                selectedAnswer={answers[currentQuestionData.id] || null}
                 onAnswerSelect={handleAnswerSelect}
-                showResults={reviewMode}
+                showResults={reviewMode || (config.feedbackEnabled && !!answers[currentQuestionData.id])}
               />
 
               {/* Navegação */}

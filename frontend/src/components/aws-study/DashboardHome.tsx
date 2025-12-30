@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trophy, 
   Target, 
@@ -18,6 +18,8 @@ import {
 import { StatisticsManager } from '@/utils/statisticsManager';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { AWSBenefitsCards } from './AWSBenefitsCards';
+import { loadExamState } from '@/lib/exam-engine';
+import { useRouter } from 'next/navigation';
 
 interface DashboardHomeProps {
   onSelectDiagram: () => void;
@@ -30,8 +32,30 @@ interface DashboardHomeProps {
 }
 
 export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam, onSelectOfficialExam, onSelectStats, onSelectStudyPlan, onSelectReview }: DashboardHomeProps) {
-  const stats = StatisticsManager.getStats();
-  const weakCategories = StatisticsManager.getWeakestCategories(5);
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  
+  // Evita hydration error com dados do localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  const stats = mounted ? StatisticsManager.getStats() : {
+    totalQuestions: 0,
+    correctAnswers: 0,
+    currentStreak: 0,
+    level: 1,
+    totalXP: 0,
+    overallAccuracy: 0,
+    examHistory: [],
+    categoryStats: {},
+    badges: []
+  };
+  const weakCategories = mounted ? StatisticsManager.getWeakestCategories(5) : [];
+  
+  // Carregar última prova do localStorage
+  const lastExam = mounted ? loadExamState() : null;
+  const hasLastExam = lastExam && lastExam.finished;
   
   // Calcular XP necessário para próximo nível usando mesma fórmula do StatisticsManager
   const nextLevel = stats.level + 1;
@@ -39,7 +63,7 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
   const xpForCurrentLevel = stats.level * stats.level * 50;
   const xpInCurrentLevel = stats.totalXP - xpForCurrentLevel;
   const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
-  const xpProgress = (xpInCurrentLevel / xpNeededForNextLevel) * 100;
+  const xpProgress = Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100);
 
   // Dados para gráficos
   const recentExams = stats.examHistory.slice(0, 7).reverse().map((exam, idx) => ({
@@ -80,11 +104,11 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
                 <Flame className="text-yellow-300" size={20} />
-                <span className="font-bold">{stats.currentStreak} dias de streak!</span>
+                <span className="font-bold">{mounted ? stats.currentStreak : 0} dias de streak!</span>
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
                 <Trophy className="text-yellow-300" size={20} />
-                <span className="font-bold">Nível {stats.level}</span>
+                <span className="font-bold">Nível {mounted ? stats.level : 1}</span>
               </div>
             </div>
           </div>
@@ -99,6 +123,73 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
       {/* AWS Benefits Section */}
       <AWSBenefitsCards />
 
+      {/* Última Prova - Seção destacada */}
+      {hasLastExam && lastExam && lastExam.blueprint?.questionIds && (() => {
+        const totalQuestions = lastExam.blueprint.questionIds.length;
+        const answeredCount = lastExam.answers?.filter(a => a !== null && a !== undefined).length || 0;
+        
+        const score = lastExam.finishedAt && stats.examHistory.length > 0 
+          ? Math.round((stats.examHistory[stats.examHistory.length - 1].correctAnswers / stats.examHistory[stats.examHistory.length - 1].totalQuestions) * 100)
+          : 0;
+        
+        const timeSpent = lastExam.finishedAt 
+          ? Math.floor((lastExam.finishedAt - lastExam.startedAt) / 1000)
+          : 0;
+        
+        const mins = Math.floor(timeSpent / 60);
+        const secs = timeSpent % 60;
+        
+        const examMode = lastExam.settings?.kind === 'training' ? '🎯 Treino' : 
+                        lastExam.settings?.kind === 'simulator' ? '📝 Simulador' : 
+                        '🏆 Prova Oficial';
+        
+        const dateStr = lastExam.finishedAt 
+          ? new Date(lastExam.finishedAt).toLocaleDateString('pt-BR', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit' 
+            })
+          : '';
+        
+        return (
+          <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-orange-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-xs text-slate-500 uppercase mb-1">Última Prova</div>
+                <h3 className="text-xl font-bold text-slate-900">{examMode}</h3>
+              </div>
+              <button
+                onClick={() => router.push(`/aws-study/exam/${lastExam.id}/review`)}
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-lg transition text-sm"
+              >
+                🔄 Revisão Inteligente
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className={`text-3xl font-bold mb-1 ${score >= 72 ? 'text-green-600' : 'text-red-600'}`}>
+                  {score}%
+                </div>
+                <div className="text-xs text-slate-600">Acurácia</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-1">
+                  {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+                </div>
+                <div className="text-xs text-slate-600">Tempo</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-slate-700 mb-1">
+                  {dateStr}
+                </div>
+                <div className="text-xs text-slate-600">Data</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-purple-100 hover:border-purple-300 transition-all cursor-pointer hover:shadow-xl">
@@ -112,7 +203,7 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
           <div className="text-sm text-slate-600">Provas Realizadas</div>
           {stats.totalExams > 0 && (
             <div className="mt-3 text-xs text-green-600 font-semibold">
-              +{stats.examHistory.filter(e => e.date > Date.now() - 7*24*60*60*1000).length} esta semana
+              +{stats.examHistory.filter(e => new Date(e.date).getTime() > Date.now() - 7*24*60*60*1000).length} esta semana
             </div>
           )}
         </div>

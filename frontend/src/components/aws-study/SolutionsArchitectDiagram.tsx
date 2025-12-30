@@ -81,11 +81,7 @@ export function SolutionsArchitectDiagram({
 
         {/* Route 53 */}
         <AWSServiceBox
-          title="Amazon Route 53 (DNS)"
-          description={[
-            'Resolução de domínio',
-            'Roteamento altamente disponível'
-          ]}
+          title="Amazon Route 53"
           icon={<Globe size={28} />}
           color="bg-white"
           onClick={() => onServiceClick('route53')}
@@ -97,11 +93,7 @@ export function SolutionsArchitectDiagram({
 
         {/* CloudFront */}
         <AWSServiceBox
-          title="Amazon CloudFront (CDN)"
-          description={[
-            'Cache em edge locations',
-            'Redução de latência'
-          ]}
+          title="Amazon CloudFront"
           icon={<Cloud size={28} />}
           color="bg-white"
           onClick={() => onServiceClick('cloudfront')}
@@ -114,11 +106,7 @@ export function SolutionsArchitectDiagram({
           <div className="flex flex-col items-center">
             <ArrowDown className="text-gray-500 mb-3 md:mb-4" size={24} strokeWidth={2.5} />
             <AWSServiceBox
-              title="Amazon S3 (Static Frontend)"
-              description={[
-                'Frontend estático',
-                'Assets e arquivos'
-              ]}
+              title="Amazon S3"
               icon={<HardDrive size={24} />}
               color="bg-white"
               variant="compact"
@@ -130,11 +118,7 @@ export function SolutionsArchitectDiagram({
           <div className="flex flex-col items-center">
             <ArrowDown className="text-gray-500 mb-3 md:mb-4" size={24} strokeWidth={2.5} />
             <AWSServiceBox
-              title="Application Load Balancer (ALB)"
-              description={[
-                'Entrada da API',
-                'HTTP / HTTPS'
-              ]}
+              title="Application Load Balancer"
               icon={<Network size={24} />}
               color="bg-white"
               variant="compact"
@@ -162,11 +146,7 @@ export function SolutionsArchitectDiagram({
             >
               <div className="flex flex-col items-center">
                 <AWSServiceBox
-                  title="Application Load Balancer (ALB)"
-                  description={[
-                    'Balanceamento de carga (Layer 7)',
-                    'Health Checks'
-                  ]}
+                  title="ALB"
                   icon={<Network size={20} />}
                   color="bg-white"
                   variant="compact"
@@ -187,8 +167,7 @@ export function SolutionsArchitectDiagram({
             >
               <div className="flex flex-col items-center space-y-2 md:space-y-3">
                 <AWSServiceBox
-                  title="Auto Scaling Group (Multi-AZ)"
-                  description={['Escalabilidade automática']}
+                  title="Auto Scaling Group"
                   icon={<Layers size={20} />}
                   color="bg-white"
                   variant="compact"
@@ -197,11 +176,7 @@ export function SolutionsArchitectDiagram({
                   serviceId="auto-scaling"
                 />
                 <AWSServiceBox
-                  title="Amazon EC2 Instances"
-                  description={[
-                    'Backend / API',
-                    'Serviços internos'
-                  ]}
+                  title="Amazon EC2"
                   icon={<Server size={20} />}
                   color="bg-white"
                   variant="compact"
@@ -211,10 +186,6 @@ export function SolutionsArchitectDiagram({
                 />
                 <AWSServiceBox
                   title="Amazon SQS"
-                  description={[
-                    'Mensageria assíncrona',
-                    'Desacoplamento de sistemas'
-                  ]}
                   icon={<GitBranch size={20} />}
                   color="bg-white"
                   variant="compact"
@@ -235,12 +206,7 @@ export function SolutionsArchitectDiagram({
             >
               <div className="flex flex-col items-center">
                 <AWSServiceBox
-                  title="Amazon RDS (Multi-AZ)"
-                  description={[
-                    'Banco relacional gerenciado',
-                    'Primary / Standby',
-                    'Failover automático'
-                  ]}
+                  title="Amazon RDS"
                   icon={<Database size={20} />}
                   color="bg-white"
                   variant="compact"
@@ -259,7 +225,6 @@ export function SolutionsArchitectDiagram({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4">
             <AWSServiceBox
               title="IAM"
-              description={['Identidade e acesso']}
               icon={<Lock size={18} />}
               color="bg-white"
               variant="compact"
@@ -269,7 +234,6 @@ export function SolutionsArchitectDiagram({
             />
             <AWSServiceBox
               title="IAM Role"
-              description={['Permissões temporárias']}
               icon={<Shield size={18} />}
               color="bg-white"
               variant="compact"
@@ -279,7 +243,6 @@ export function SolutionsArchitectDiagram({
             />
             <AWSServiceBox
               title="Security Groups"
-              description={['Firewall de instância']}
               icon={<Shield size={18} />}
               color="bg-white"
               variant="compact"
@@ -289,7 +252,6 @@ export function SolutionsArchitectDiagram({
             />
             <AWSServiceBox
               title="Amazon SNS"
-              description={['Notificações']}
               icon={<Bell size={18} />}
               color="bg-white"
               variant="compact"
@@ -299,7 +261,6 @@ export function SolutionsArchitectDiagram({
             />
             <AWSServiceBox
               title="CloudWatch"
-              description={['Logs e métricas']}
               icon={<Activity size={18} />}
               color="bg-white"
               variant="compact"

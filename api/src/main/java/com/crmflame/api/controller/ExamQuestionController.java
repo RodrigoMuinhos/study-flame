@@ -1,6 +1,7 @@
 package com.crmflame.api.controller;
 
 import com.crmflame.api.dto.ExamQuestionDTO;
+import com.crmflame.api.dto.RandomQuestionsRequest;
 import com.crmflame.api.service.ExamQuestionService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,8 +48,31 @@ public class ExamQuestionController {
     
     @GetMapping("/random")
     @Operation(summary = "Questões aleatórias", description = "Retorna questões aleatórias para simulado")
-    public ResponseEntity<List<ExamQuestionDTO>> getRandomQuestions() {
-        return ResponseEntity.ok(service.getRandomQuestions());
+    public ResponseEntity<List<ExamQuestionDTO>> getRandomQuestions(
+            @RequestParam(required = false) Integer count,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String topic,
+            @RequestParam(required = false) String domain,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) Boolean multipleChoice) {
+        return ResponseEntity.ok(service.getRandomQuestionsFiltered(count, status, topic, domain, difficulty, multipleChoice));
+    }
+
+    @PostMapping("/random")
+    @Operation(summary = "Buscar questões aleatórias (POST)", description = "Retorna questões aleatórias para simulado via POST")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Questões recuperadas com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Quantidade inválida")
+    })
+    public ResponseEntity<List<ExamQuestionDTO>> getRandomQuestionsPost(@RequestBody RandomQuestionsRequest request) {
+        Integer quantity = request.getQuantity() != null ? request.getQuantity() : 30;
+        return ResponseEntity.ok(service.getRandomQuestionsFiltered(quantity, "ACTIVE", null, null, null, null));
+    }
+
+    @PostMapping("/by-ids")
+    @Operation(summary = "Buscar questões por IDs", description = "Retorna questões na mesma ordem dos IDs (para hidratação do blueprint)")
+    public ResponseEntity<List<ExamQuestionDTO>> getByIds(@RequestBody List<String> ids) {
+        return ResponseEntity.ok(service.getQuestionsByIds(ids));
     }
     
     @GetMapping("/domain/{domain}")

@@ -1,14 +1,15 @@
 package com.crmflame.api.repository;
 
-import com.crmflame.api.model.StudentBadge;
-import com.crmflame.api.model.Lead;
-import com.crmflame.api.model.Badge;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.crmflame.api.model.Badge;
+import com.crmflame.api.model.Lead;
+import com.crmflame.api.model.StudentBadge;
 
 @Repository
 public interface StudentBadgeRepository extends JpaRepository<StudentBadge, Long> {

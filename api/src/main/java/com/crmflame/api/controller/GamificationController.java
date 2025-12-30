@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/api/gamification")
+@RequestMapping("/gamification")
 @CrossOrigin(origins = "*")
 @Tag(name = "Gamification", description = "Sistema de gamificação - XP, níveis, badges e conquistas")
 public class GamificationController {

@@ -342,4 +342,48 @@ export const adminService = {
   },
 };
 
+// =====================
+// AWS Exam Service
+// =====================
+
+export interface ExamQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+  domain?: string;
+  difficulty?: string;
+  category?: string;
+  multipleChoice?: boolean;
+}
+
+export interface QuestionOption {
+  id: string;
+  text: string;
+}
+
+export interface RandomQuestionsRequest {
+  quantity: number;
+}
+
+export interface MixedQuestionsRequest {
+  topics: {
+    topic: string;
+    quantity: number;
+  }[];
+}
+
+export const awsExamService = {
+  getRandomQuestions: async (quantity: number): Promise<ExamQuestion[]> => {
+    const response = await api.post<ExamQuestion[]>('/exam-questions/random', { quantity });
+    return response.data;
+  },
+  
+  getMixedQuestions: async (topicMix: { topic: string; quantity: number }[]): Promise<ExamQuestion[]> => {
+    const response = await api.post<ExamQuestion[]>('/exam-questions/mixed', { topics: topicMix });
+    return response.data;
+  },
+};
+
 export default api;

@@ -30,6 +30,16 @@ public class ExamQuestion {
     
     @Column(nullable = false)
     private String difficulty; // easy, medium, hard
+
+    // Ex: s3, vpc, iam... (alinha com o "diagrama" e com o modo treino)
+    // Mantemos nullable=true por compatibilidade com bancos já populados.
+    @Column
+    private String topic;
+
+    // DRAFT | ACTIVE | RETIRED | FLAGGED
+    // Mantemos nullable=true por compatibilidade; a service normaliza para ACTIVE.
+    @Column
+    private String status;
     
     @Column(name = "multiple_choice")
     private Boolean multipleChoice = false;
@@ -47,6 +57,21 @@ public class ExamQuestion {
         this.domain = domain;
         this.difficulty = difficulty;
         this.multipleChoice = multipleChoice;
+    }
+
+    public ExamQuestion(String id, String question, List<String> options, String correctAnswer,
+                       String explanation, String domain, String difficulty, Boolean multipleChoice,
+                       String topic, String status) {
+        this.id = id;
+        this.question = question;
+        this.options = options;
+        this.correctAnswer = correctAnswer;
+        this.explanation = explanation;
+        this.domain = domain;
+        this.difficulty = difficulty;
+        this.multipleChoice = multipleChoice;
+        this.topic = topic;
+        this.status = status;
     }
     
     // Getters and Setters
@@ -112,5 +137,21 @@ public class ExamQuestion {
     
     public void setMultipleChoice(Boolean multipleChoice) {
         this.multipleChoice = multipleChoice;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

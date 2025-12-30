@@ -5,16 +5,6 @@ const nextConfig = {
   // Standalone output for Docker deployment
   output: 'standalone',
   
-  typescript: {
-    // Em produção, não ignorar erros de TypeScript
-    ignoreBuildErrors: process.env.NODE_ENV === 'development',
-  },
-  
-  eslint: {
-    // Em produção, não ignorar erros de ESLint
-    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
-  },
-  
   async rewrites() {
     // Only use rewrites in development
     if (process.env.NODE_ENV === 'development') {
