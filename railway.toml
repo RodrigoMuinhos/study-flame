@@ -1,0 +1,13 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "api/Dockerfile"
+watchPatterns = ["api/**"]
+
+[build.buildArgs]
+# Build context will be the api folder
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
