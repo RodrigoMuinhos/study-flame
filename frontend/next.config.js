@@ -1,3 +1,5 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,6 +18,12 @@ const nextConfig = {
       ];
     }
     return [];
+  },
+
+  webpack: (config) => {
+    // Ensure @ alias resolves to src during build
+    config.resolve.alias['@'] = path.join(process.cwd(), 'src');
+    return config;
   },
 };
 
