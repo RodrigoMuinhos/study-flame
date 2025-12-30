@@ -245,7 +245,7 @@ https://study-flame.vercel.app/Flamebanner.png
 https://chat.whatsapp.com/BMoAhtm2ofhCRPxCgAcFmB
 
 *Acesse a plataforma:*
-https://Study-flame.vercel.app/
+https://studycamp-flame.vercel.app/
 
 *Suas credenciais de acesso:*
 CPF: ${cred.leadCpf}
