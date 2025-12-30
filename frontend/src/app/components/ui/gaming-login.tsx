@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, User, Lock, Chrome, Twitter, Gamepad2 } from 'lucide-react';
 
 interface LoginFormProps {
@@ -8,7 +8,8 @@ interface LoginFormProps {
 }
 
 interface VideoBackgroundProps {
-    videoUrl: string;
+    /** Optional background image; fallback uses Flamebanner.png */
+    videoUrl?: string;
 }
 
 interface FormInputProps {
@@ -77,47 +78,20 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, id }) =>
     );
 };
 
-// VideoBackground Component
+// VideoBackground Component (now static image for performance)
 const VideoBackground: React.FC<VideoBackgroundProps> = ({ videoUrl }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-
-    useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.play().catch(error => {
-                console.error("Video autoplay failed:", error);
-            });
-        }
-    }, []);
-
-    const getVideoSources = () => {
-        const baseUrl = videoUrl.replace(/\.(mp4|webm|mov|ogg)$/i, "");
-        return [
-            { src: `${baseUrl}.mp4`, type: "video/mp4" },
-            { src: `${baseUrl}.webm`, type: "video/webm" },
-            { src: `${baseUrl}.mov`, type: "video/quicktime" },
-        ];
-    };
+    const backgroundImage = videoUrl && /\.(mp4|webm|mov|ogg)$/i.test(videoUrl)
+        ? '/Flamebanner.png'
+        : (videoUrl || '/Flamebanner.png');
 
     return (
         <div className="absolute inset-0 w-full h-full overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-black/5 via-black/0 to-black/5 z-10" />
-            <video
-                ref={videoRef}
-                className="absolute inset-0 min-w-full min-h-full object-cover w-auto h-auto"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                onError={(e) => {
-                    console.warn("Background video failed to load/play:", videoUrl);
-                }}
-            >
-                {getVideoSources().map((source, idx) => (
-                    <source key={idx} src={source.src} type={source.type} />
-                ))}
-                Your browser does not support the video tag.
-            </video>
+            <div
+                className="absolute inset-0 bg-[length:110%] bg-center bg-cover scale-105 blur-[0.5px]"
+                style={{ backgroundImage: `url(${backgroundImage})` }}
+                aria-hidden
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
         </div>
     );
 };
