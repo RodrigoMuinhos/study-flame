@@ -2,8 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   
-  // Standalone output for Docker deployment
-  output: 'standalone',
+  // Standalone output only for Docker deployment, not for Vercel
+  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
   
   async rewrites() {
     // Only use rewrites in development
