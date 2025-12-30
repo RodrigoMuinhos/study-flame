@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import * as React from "react";
 import { 
   Users, 
   TrendingUp, 
@@ -42,6 +43,8 @@ import { leadService, type Lead } from "@/services/api";
 import { NotificationCenter } from "./ui/notification-center";
 import { useToast } from "./ui/toast";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
 interface AdminDashboardProps {
   onLogout: () => void;
 }
@@ -77,6 +80,8 @@ interface VideoLesson {
   youtubeUrl: string;
   duration: string;
   isPublished: boolean;
+  moduleNumber: number;
+  lessonNumber: number;
 }
 
 interface Invite {
@@ -90,7 +95,7 @@ interface Invite {
   expiresAt: string;
 }
 
-type AdminSection = "dashboard" | "students" | "invites" | "videos" | "access" | "awstoken" | "messages" | "settings" | "maintenance";
+type AdminSection = "dashboard" | "students" | "invites" | "videos" | "awsquest" | "access" | "awstoken" | "messages" | "settings" | "maintenance";
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -151,6 +156,36 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Carregar vídeos da API
+  useEffect(() => {
+    const carregarVideos = async () => {
+      try {
+        setVideosLoading(true);
+        const response = await fetch(`${API_BASE_URL}/videos`);
+        if (response.ok) {
+          const data = await response.json();
+          // Converter formato da API para o formato do componente
+          const videosFormatados = data.map((v: any) => ({
+            id: v.id,
+            module: `Módulo ${v.moduleNumber} • Aula ${v.lessonNumber}`,
+            title: v.title,
+            youtubeUrl: v.youtubeUrl,
+            duration: `${v.durationMinutes} min`,
+            isPublished: v.isPublished,
+            moduleNumber: v.moduleNumber,
+            lessonNumber: v.lessonNumber
+          }));
+          setVideos(videosFormatados);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar vídeos:', error);
+      } finally {
+        setVideosLoading(false);
+      }
+    };
+    carregarVideos();
+  }, []);
+
   // Integrar com backend: carregar leads e popular alunos do painel
   useEffect(() => {
     const carregarLeads = async () => {
@@ -176,6 +211,31 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     carregarLeads();
   }, []);
 
+  useEffect(() => {
+    const carregarAwsStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/aws-questions/stats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const counts: Record<string, number> = {};
+          let total = 0;
+          data.forEach((item: any) => {
+            if (!item?.theme) return;
+            const qty = Number(item.questionCount || 0);
+            counts[item.theme] = qty;
+            total += qty;
+          });
+          setAwsQuestionStats({ byTheme: counts, total });
+        }
+      } catch (e) {
+        console.error("Falha ao carregar stats AWS Quest", e);
+      }
+    };
+
+    carregarAwsStats();
+  }, []);
+
   // Form de adicionar aluno
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
@@ -195,6 +255,12 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [videos, setVideos] = useState<VideoLesson[]>([]);
 
   const [invites, setInvites] = useState<Invite[]>([]);
+
+  const [awsQuestionStats, setAwsQuestionStats] = useState<{ byTheme: Record<string, number>; total: number }>({ byTheme: {}, total: 0 });
+  const [awsImportError, setAwsImportError] = useState<string | null>(null);
+  const [awsLastImportName, setAwsLastImportName] = useState<string>("");
+  const [awsImportLoading, setAwsImportLoading] = useState<boolean>(false);
+  const [videosLoading, setVideosLoading] = useState<boolean>(false);
 
   const handleSendMessage = () => {
     if (messageTitle && messageContent) {
@@ -226,24 +292,92 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     ));
   };
 
-  const toggleVideoPublish = (videoId: number) => {
-    setVideos(videos.map(v =>
-      v.id === videoId ? { ...v, isPublished: !v.isPublished } : v
-    ));
+  const toggleVideoPublish = async (videoId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/videos/${videoId}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const updated = await response.json();
+        setVideos(videos.map(v =>
+          v.id === videoId ? { ...v, isPublished: updated.isPublished } : v
+        ));
+      } else {
+        console.error('Erro ao publicar vídeo');
+      }
+    } catch (error) {
+      console.error('Erro ao publicar vídeo:', error);
+    }
   };
 
-  const handleAddVideo = () => {
-    if (newVideoTitle && newVideoUrl && newVideoDuration) {
-      const newVideo: VideoLesson = {
-        id: Date.now(),
-        module: `Módulo ${newVideoModule} • Aula ${newVideoNumber}`,
-        title: newVideoTitle,
-        youtubeUrl: newVideoUrl,
-        duration: newVideoDuration,
-        isPublished: false
-      };
+  const handleDeleteVideo = async (videoId: number) => {
+    if (!confirm('Tem certeza que deseja deletar este vídeo?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/videos/${videoId}`, {
+        method: 'DELETE'
+      });
       
-      setVideos([...videos, newVideo]);
+      if (response.ok || response.status === 204) {
+        setVideos(videos.filter(v => v.id !== videoId));
+      } else {
+        alert('Erro ao deletar vídeo');
+      }
+    } catch (error) {
+      console.error('Erro ao deletar vídeo:', error);
+      alert('Erro ao deletar vídeo');
+    }
+  };
+
+  const handleAddVideo = async () => {
+    if (newVideoTitle && newVideoUrl && newVideoDuration) {
+      try {
+        const videoData = {
+          moduleNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoModule),
+          lessonNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
+          title: newVideoTitle,
+          description: '',
+          youtubeUrl: newVideoUrl,
+          durationMinutes: parseInt(newVideoDuration),
+          orderIndex: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
+          isPublished: false,
+          pageLocation: newVideoPage
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/videos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(videoData)
+        });
+        
+        if (response.ok) {
+          const created = await response.json();
+          const newVideo: VideoLesson = {
+            id: created.id,
+            module: `Módulo ${created.moduleNumber} • Aula ${created.lessonNumber}`,
+            title: created.title,
+            youtubeUrl: created.youtubeUrl,
+            duration: `${created.durationMinutes} min`,
+            isPublished: created.isPublished,
+            moduleNumber: created.moduleNumber,
+            lessonNumber: created.lessonNumber
+          };
+          setVideos([...videos, newVideo]);
+        } else {
+          const error = await response.text();
+          console.error('Erro ao criar vídeo:', error);
+          alert('Erro ao criar vídeo. Verifique se já existe um vídeo para este módulo/aula.');
+          return;
+        }
+      } catch (error) {
+        console.error('Erro ao criar vídeo:', error);
+        alert('Erro ao criar vídeo');
+        return;
+      }
       
       // Limpar form
       setNewVideoModule("0");
@@ -252,6 +386,105 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
       setNewVideoUrl("");
       setNewVideoDuration("");
       setShowVideoModal(false);
+    }
+  };
+
+  const normalizeAwsImport = (parsed: any) => {
+    const counts: Record<string, number> = {};
+    const themesPayload: Array<{ theme: string; questions: any; questionCount: number }> = [];
+    let total = 0;
+
+    const addTheme = (theme: string, questions: any) => {
+      const safeTheme = theme && theme.trim() ? theme.trim() : "Sem tema";
+      let questionCount = 0;
+      if (Array.isArray(questions)) {
+        questionCount = questions.length;
+      } else if (questions && typeof questions === "object" && Array.isArray((questions as any).questions)) {
+        questionCount = (questions as any).questions.length;
+        questions = (questions as any).questions;
+      } else if (questions) {
+        questionCount = 1;
+        questions = [questions];
+      }
+
+      if (questionCount === 0) return;
+
+      counts[safeTheme] = (counts[safeTheme] || 0) + questionCount;
+      total += questionCount;
+      themesPayload.push({ theme: safeTheme, questions, questionCount });
+    };
+
+    if (Array.isArray(parsed)) {
+      parsed.forEach((item: any) => {
+        if (!item) return;
+        const theme = item.theme || item.assunto || item.categoria;
+        const questions = item.questions || item.perguntas || item.items || item.questoes || [];
+        addTheme(theme, questions);
+      });
+    } else if (parsed && typeof parsed === "object") {
+      Object.entries(parsed as Record<string, any>).forEach(([theme, value]) => {
+        if (Array.isArray(value)) {
+          addTheme(theme, value);
+        } else {
+          addTheme(theme, (value as any).questions || value);
+        }
+      });
+    }
+
+    return { counts, total, themesPayload };
+  };
+
+  const handleAwsQuestionImport = async (file: File) => {
+    try {
+      setAwsImportError(null);
+      setAwsImportLoading(true);
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const { counts, total, themesPayload } = normalizeAwsImport(parsed);
+
+      if (total === 0 || themesPayload.length === 0) {
+        throw new Error("Nenhuma questão encontrada no arquivo.");
+      }
+
+      setAwsQuestionStats({ byTheme: counts, total });
+      setAwsLastImportName(file.name);
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/aws-questions/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ themes: themesPayload }),
+        });
+
+        if (!res.ok) {
+          const textError = await res.text();
+          throw new Error(textError || `Erro ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const apiCounts: Record<string, number> = {};
+          let apiTotal = 0;
+          data.forEach((item: any) => {
+            if (!item?.theme) return;
+            const qty = Number(item.questionCount || 0);
+            apiCounts[item.theme] = qty;
+            apiTotal += qty;
+          });
+          if (apiTotal > 0) {
+            setAwsQuestionStats({ byTheme: apiCounts, total: apiTotal });
+          }
+        }
+      } catch (err: any) {
+        console.error("Falha ao salvar no backend", err);
+        setAwsImportError(err?.message || "Erro ao salvar no backend");
+      }
+    } catch (error: any) {
+      console.error("Falha ao importar banco AWS Quest", error);
+      setAwsImportError(error?.message || "Erro ao ler o JSON");
+    } finally {
+      setAwsImportLoading(false);
     }
   };
 
@@ -404,6 +637,14 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               onClick={() => setCurrentSection("videos")}
               collapsed={sidebarCollapsed}
             />
+            {/* AWS-Quest removido - agora usamos banco de dados via API */}
+            {/* <SidebarButton
+              icon={<Award size={20} />}
+              label="AWS-Quest"
+              active={currentSection === "awsquest"}
+              onClick={() => setCurrentSection("awsquest")}
+              collapsed={sidebarCollapsed}
+            /> */}
             <SidebarButton
               icon={<MessageSquare size={20} />}
               label="Mensagens"
@@ -499,9 +740,22 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               key="videos"
               videos={videos}
               onTogglePublish={toggleVideoPublish}
+              onDeleteVideo={handleDeleteVideo}
               onAddVideo={() => setShowVideoModal(true)}
             />
           )}
+
+          {/* AWS-Quest section removida - agora usamos banco de dados via API */}
+          {/* {currentSection === "awsquest" && (
+            <AwsQuestSection
+              key="awsquest"
+              questionStats={awsQuestionStats}
+              importError={awsImportError}
+              lastImportName={awsLastImportName}
+              importLoading={awsImportLoading}
+              onImportQuestions={handleAwsQuestionImport}
+            />
+          )} */}
 
           {currentSection === "access" && (
             <AccessSection
@@ -790,7 +1044,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="fixed inset-4 z-50 m-auto flex h-fit max-h-[90vh] w-full max-w-2xl items-center justify-center"
           >
-            <div className="max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-primary/30 bg-card shadow-2xl">
+            <div className="max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -818,7 +1072,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   <select
                     value={newVideoPage}
                     onChange={(e) => setNewVideoPage(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="inicio">Início</option>
                     <option value="trilha">Trilha de Aprendizado</option>
@@ -831,42 +1085,45 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   </p>
                 </div>
 
-                <div className="mb-4 grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-foreground">Módulo</label>
-                    <select
-                      value={newVideoModule}
-                      onChange={(e) => setNewVideoModule(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option value="0">Módulo 0 - Preparação</option>
-                      <option value="1">Módulo 1 - Fundamentos</option>
-                      <option value="2">Módulo 2 - Frontend Básico</option>
-                      <option value="3">Módulo 3 - Backend Básico</option>
-                      <option value="4">Módulo 4 - Banco de Dados</option>
-                      <option value="5">Módulo 5 - Autenticação</option>
-                      <option value="6">Módulo 6 - CRUD Completo</option>
-                      <option value="7">Módulo 7 - API REST</option>
-                      <option value="8">Módulo 8 - Frontend Avançado</option>
-                      <option value="9">Módulo 9 - Integração</option>
-                      <option value="10">Módulo 10 - Testes</option>
-                      <option value="11">Módulo 11 - Deploy</option>
-                      <option value="12">Módulo 12 - Finalização</option>
-                    </select>
-                  </div>
+                {/* Só mostra Módulo e Aula se NÃO for página "Início" */}
+                {newVideoPage !== "inicio" && (
+                  <div className="mb-4 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-foreground">Módulo</label>
+                      <select
+                        value={newVideoModule}
+                        onChange={(e) => setNewVideoModule(e.target.value)}
+                        className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="0">Módulo 0 - Preparação</option>
+                        <option value="1">Módulo 1 - Fundamentos</option>
+                        <option value="2">Módulo 2 - Frontend Básico</option>
+                        <option value="3">Módulo 3 - Backend Básico</option>
+                        <option value="4">Módulo 4 - Banco de Dados</option>
+                        <option value="5">Módulo 5 - Autenticação</option>
+                        <option value="6">Módulo 6 - CRUD Completo</option>
+                        <option value="7">Módulo 7 - API REST</option>
+                        <option value="8">Módulo 8 - Frontend Avançado</option>
+                        <option value="9">Módulo 9 - Integração</option>
+                        <option value="10">Módulo 10 - Testes</option>
+                        <option value="11">Módulo 11 - Deploy</option>
+                        <option value="12">Módulo 12 - Finalização</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-foreground">Aula Nº</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newVideoNumber}
-                      onChange={(e) => setNewVideoNumber(e.target.value)}
-                      placeholder="1"
-                      className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-                    />
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-foreground">Aula Nº</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newVideoNumber}
+                        onChange={(e) => setNewVideoNumber(e.target.value)}
+                        placeholder="1"
+                        className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="mb-4">
                   <label className="mb-2 block text-sm font-semibold text-foreground">Título da Aula</label>
@@ -875,7 +1132,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     value={newVideoTitle}
                     onChange={(e) => setNewVideoTitle(e.target.value)}
                     placeholder="Ex: Bem-vindo ao Jogo Real"
-                    className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
@@ -886,7 +1143,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     value={newVideoUrl}
                     onChange={(e) => setNewVideoUrl(e.target.value)}
                     placeholder="https://youtube.com/watch?v=... ou https://youtu.be/..."
-                    className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
                     Cole a URL completa do vídeo no YouTube
@@ -900,14 +1157,14 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     value={newVideoDuration}
                     onChange={(e) => setNewVideoDuration(e.target.value)}
                     placeholder="Ex: 8 min"
-                    className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowVideoModal(false)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 py-3 font-semibold text-foreground transition hover:bg-muted"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-input bg-background px-6 py-3 font-semibold text-foreground transition hover:bg-accent"
                   >
                     Cancelar
                   </button>
@@ -1202,7 +1459,12 @@ function InvitesSection({ invites }: { invites: Invite[] }) {
   );
 }
 
-function VideosSection({ videos, onTogglePublish, onAddVideo }: { videos: VideoLesson[]; onTogglePublish: (id: number) => void; onAddVideo: () => void }) {
+function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: { 
+  videos: VideoLesson[]; 
+  onTogglePublish: (id: number) => void; 
+  onDeleteVideo: (id: number) => void;
+  onAddVideo: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1278,13 +1540,267 @@ function VideosSection({ videos, onTogglePublish, onAddVideo }: { videos: VideoL
                 <button className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
                   <Edit size={18} />
                 </button>
-                <button className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-red-500 transition hover:bg-red-500/20">
+                <button 
+                  onClick={() => onDeleteVideo(video.id)}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-red-600 transition hover:bg-red-500/20"
+                  title="Deletar vídeo"
+                >
                   <Trash2 size={18} />
                 </button>
               </div>
             </div>
           </motion.div>
         ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function AwsQuestSection({ questionStats, importError, lastImportName, importLoading, onImportQuestions }: {
+  questionStats: { byTheme: Record<string, number>; total: number };
+  importError: string | null;
+  lastImportName: string;
+  importLoading: boolean;
+  onImportQuestions: (file: File) => void;
+}) {
+  const [selectedTheme, setSelectedTheme] = React.useState("");
+  const [subtopic, setSubtopic] = React.useState("");
+  const [questionJson, setQuestionJson] = React.useState("");
+  const [addError, setAddError] = React.useState<string | null>(null);
+  const [adding, setAdding] = React.useState(false);
+
+  const awsThemes = [
+    "Edge & Acesso",
+    "Frontend & Conteúdo",
+    "Compute & Escala",
+    "Rede & Segurança",
+    "Identidade & Segurança",
+    "Mensageria & Eventos",
+    "Banco de Dados",
+    "Observabilidade",
+    "Arquitetura (Nível Prova)"
+  ];
+
+  const subtopicsByTheme: Record<string, string[]> = {
+    "Edge & Acesso": ["Route 53", "CloudFront"],
+    "Frontend & Conteúdo": ["S3 Static Website", "Amplify"],
+    "Compute & Escala": ["EC2", "Lambda", "Auto Scaling", "Elastic Load Balancer (ALB/NLB)", "ECS", "EKS"],
+    "Rede & Segurança": ["VPC", "Security Groups", "NACLs", "VPN", "Direct Connect", "Transit Gateway", "Subnets (Public/Private/Isolated)"],
+    "Identidade & Segurança": ["IAM", "IAM Roles", "IAM Policies", "Cognito", "Secrets Manager", "KMS"],
+    "Mensageria & Eventos": ["SQS", "SNS", "EventBridge", "Kinesis"],
+    "Banco de Dados": ["RDS (Multi-AZ)", "Aurora", "DynamoDB", "ElastiCache", "Redshift"],
+    "Observabilidade": ["CloudWatch", "CloudWatch Logs", "X-Ray", "CloudTrail"],
+    "Arquitetura (Nível Prova)": ["Well-Architected Framework", "Multi-AZ", "High Availability", "Disaster Recovery", "Cost Optimization"]
+  };
+
+  const availableSubtopics = selectedTheme ? (subtopicsByTheme[selectedTheme] || []) : [];
+
+  const handleAddQuestion = async () => {
+    if (!selectedTheme || !questionJson.trim()) {
+      setAddError("Selecione um tema e insira o JSON da questão.");
+      return;
+    }
+
+    try {
+      setAddError(null);
+      setAdding(true);
+      const parsed = JSON.parse(questionJson);
+      const themeLabel = subtopic ? `${selectedTheme} > ${subtopic}` : selectedTheme;
+
+      const payload = {
+        themes: [
+          {
+            theme: themeLabel,
+            questions: Array.isArray(parsed) ? parsed : [parsed],
+            questionCount: Array.isArray(parsed) ? parsed.length : 1
+          }
+        ]
+      };
+
+      const res = await fetch(`${API_BASE_URL}/aws-questions/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || `Erro ${res.status}`);
+      }
+
+      setQuestionJson("");
+      setSubtopic("");
+      window.location.reload();
+    } catch (err: any) {
+      setAddError(err?.message || "Erro ao adicionar questão");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-8"
+    >
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="mb-2 font-bold text-foreground">AWS-Quest</h1>
+          <p className="text-muted-foreground">Acompanhe desafios e materiais da trilha AWS neste espaço dedicado.</p>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Use este painel para organizar checkpoints, links e anotações do programa AWS Quest.
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Award size={20} className="text-primary" />
+            <span className="font-semibold text-foreground">Status geral</span>
+          </div>
+          <p className="text-sm text-muted-foreground">Anote conquistas, bloqueios ou metas semanais da jornada AWS.</p>
+          <div className="mt-4 rounded-xl bg-muted/40 p-4 text-xs text-muted-foreground">
+            Personalize este bloco com os próximos objetivos ou entregas esperadas.
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart3 size={20} className="text-primary" />
+            <span className="font-semibold text-foreground">Checkpoints</span>
+          </div>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>Cadastre desafios ou quizzes semanais e marque o andamento.</li>
+            <li>Liste links de laboratórios, repositórios ou formulários de entrega.</li>
+          </ul>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Cloud size={20} className="text-primary" />
+            <span className="font-semibold text-foreground">Recursos AWS</span>
+          </div>
+          <p className="text-sm text-muted-foreground">Cole URLs úteis (console, docs, dashboards) para acesso rápido.</p>
+          <div className="mt-3 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+            Mantenha aqui o material de referência que os alunos precisam durante a missão.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Adicionar Questões AWS SAA-C03</h3>
+            <p className="text-sm text-muted-foreground">Selecione tema, subtema (opcional) e insira o JSON da questão estruturada.</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Tema (Nível 1)</label>
+              <select
+                value={selectedTheme}
+                onChange={(e) => setSelectedTheme(e.target.value)}
+                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Selecione o tema AWS...</option>
+                {awsThemes.map((theme) => (
+                  <option key={theme} value={theme}>{theme}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-foreground">Subtema / Serviço (Nível 2)</label>
+              <select
+                value={subtopic}
+                onChange={(e) => setSubtopic(e.target.value)}
+                disabled={!selectedTheme}
+                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">Selecione o subtema/serviço...</option>
+                {availableSubtopics.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-foreground">JSON da Questão (Nível 3+)</label>
+              <p className="mb-2 text-xs text-muted-foreground">Inclua: question, options, answer, explanation, level, tags</p>
+              <textarea
+                value={questionJson}
+                onChange={(e) => setQuestionJson(e.target.value)}
+                placeholder={`{ "question": "Qual routing policy...", "options": ["A", "B", "C", "D"], "answer": "C", "explanation": "Latency routing direciona...", "level": 3, "tags": ["Route 53", "Routing Policy"] }`}
+                rows={10}
+                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 font-mono text-sm text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <button
+              onClick={handleAddQuestion}
+              disabled={adding || !selectedTheme || !questionJson.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={18} />
+              {adding ? "Salvando..." : "Adicionar Questão"}
+            </button>
+
+            {addError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+                {addError}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 rounded-xl border border-border bg-muted/20 p-4">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">💡 Estrutura hierárquica AWS SAA-C03:</p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              <li>🟦 <strong>Nível 1:</strong> Tema oficial da prova (Edge & Acesso, Compute & Escala...)</li>
+              <li>🟩 <strong>Nível 2:</strong> Subtema/Serviço (Route 53, Lambda, RDS...)</li>
+              <li>🟨 <strong>Nível 3+:</strong> Sub-assuntos, regras, componentes (Routing Policy, Health Checks...)</li>
+            </ul>
+          </div>
+
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">Ver exemplo de JSON (clique para expandir)</summary>
+            <pre className="mt-2 overflow-x-auto rounded-lg bg-background/80 p-3 text-left text-[11px] leading-tight text-foreground">{`{
+  "question": "Qual routing policy do Route 53 direciona tráfego baseado em latência?",
+  "options": ["Simple", "Weighted", "Latency", "Failover"],
+  "answer": "Latency",
+  "explanation": "Latency routing policy roteia para a região com menor latência.",
+  "level": 3,
+  "tags": ["Route 53", "Routing Policy", "Latency"]
+}`}</pre>
+          </details>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart3 size={18} className="text-primary" />
+            <h4 className="font-semibold text-foreground">Contagem por tema</h4>
+          </div>
+          {questionStats.total === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum JSON importado ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm font-semibold text-foreground">
+                <span>Total de questões</span>
+                <span>{questionStats.total}</span>
+              </div>
+              <div className="max-h-64 space-y-2 overflow-y-auto pr-1 text-sm">
+                {Object.entries(questionStats.byTheme).map(([theme, count]) => (
+                  <div key={theme} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+                    <span className="text-foreground">{theme}</span>
+                    <span className="font-semibold text-primary">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

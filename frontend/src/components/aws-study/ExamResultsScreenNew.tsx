@@ -112,25 +112,28 @@ export function ExamResultsScreenNew({
                 </h4>
               </div>
 
-              {/* Opções compactas */}
+              {/* Opções compactas - Apenas A-D */}
               <div className="space-y-2 mb-6">
-                {selectedQuestion.options.map((option, index) => {
-                  const isCorrect = selectedQuestion.correctAnswer.split(',').includes(option.label);
-                  const userAnswer = result.answers[selectedQuestion.id];
-                  const wasSelected = userAnswer?.selected === option.label || 
-                                     userAnswer?.selected?.includes(option.label);
+                {selectedQuestion.options
+                  .filter(opt => opt && opt.text && opt.text.trim() !== '')
+                  .slice(0, 4)
+                  .map((option, index) => {
+                    const isCorrect = selectedQuestion.correctAnswer.split(',').includes(option.label);
+                    const userAnswer = result.answers[selectedQuestion.id];
+                    const wasSelected = userAnswer?.selected === option.label || 
+                                       userAnswer?.selected?.includes(option.label);
 
-                  return (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg border-2 ${
-                        isCorrect
-                          ? 'bg-green-50 border-green-500'
-                          : wasSelected
-                          ? 'bg-red-50 border-red-500'
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
+                    return (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border-2 ${
+                          isCorrect
+                            ? 'bg-green-50 border-green-500'
+                            : wasSelected
+                            ? 'bg-red-50 border-red-500'
+                            : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
                       <div className="flex items-start gap-3">
                         <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-xs ${
                           isCorrect

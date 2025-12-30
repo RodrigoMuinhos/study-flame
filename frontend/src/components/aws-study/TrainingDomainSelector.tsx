@@ -28,10 +28,11 @@ const iconMap: Record<string, any> = {
 export function TrainingDomainSelector({ onSelectDomain, onBack }: TrainingDomainSelectorProps) {
   // Agrupar tópicos por categoria
   const categories = trainingTopics.reduce((acc, topic) => {
-    if (!acc[topic.category]) {
-      acc[topic.category] = [];
+    const category = topic.category || 'Outros';
+    if (!acc[category]) {
+      acc[category] = [];
     }
-    acc[topic.category].push(topic);
+    acc[category].push(topic);
     return acc;
   }, {} as Record<string, typeof trainingTopics>);
 
@@ -53,7 +54,7 @@ export function TrainingDomainSelector({ onSelectDomain, onBack }: TrainingDomai
               Modo Treino — Escolha o Tema
             </h1>
             <p className="text-lg text-gray-600">
-              Pratique de <strong className="text-blue-600">1 a 20 questões</strong> por tema baseado no diagrama AWS
+              Pratique com <strong className="text-blue-600">20 questões</strong> por tema baseado no diagrama AWS
             </p>
           </div>
         </div>
@@ -66,7 +67,7 @@ export function TrainingDomainSelector({ onSelectDomain, onBack }: TrainingDomai
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {topics.map((topic) => {
-                const IconComponent = iconMap[topic.icon];
+                const IconComponent = topic.icon ? iconMap[topic.icon] : null;
                 return (
                   <div
                     key={topic.id}
@@ -83,7 +84,7 @@ export function TrainingDomainSelector({ onSelectDomain, onBack }: TrainingDomai
                           {topic.title}
                         </h3>
                         <span className="text-xs text-gray-500">
-                          1-20 questões
+                          20 questões
                         </span>
                       </div>
                     </div>

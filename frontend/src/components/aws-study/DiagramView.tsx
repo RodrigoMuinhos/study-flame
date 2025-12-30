@@ -12,6 +12,7 @@ interface DiagramViewProps {
   onServiceClick: (serviceId: string) => void;
   onClosePanel: () => void;
   onNextStep: (nextId: string) => void;
+  onPrevStep: (prevId: string) => void;
   onTraining?: (serviceId: string) => void;
   onBack: () => void;
   onGoToSimulator: () => void;
@@ -23,6 +24,7 @@ export function DiagramView({
   onServiceClick,
   onClosePanel,
   onNextStep,
+  onPrevStep,
   onTraining,
   onBack,
   onGoToSimulator
@@ -30,7 +32,7 @@ export function DiagramView({
   const { currentCertification } = useCertification();
 
   // Seleciona os dados corretos baseado na certificação
-  const currentServicesData = currentCertification === 'clf-c02' 
+  const currentServicesData = currentCertification === 'practitioner' 
     ? practitionerServicesData 
     : servicesData;
 
@@ -38,8 +40,8 @@ export function DiagramView({
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className={`transition-all duration-300 ${isPanelOpen ? 'md:mr-[500px]' : ''}`}>
-        {currentCertification === 'clf-c02' ? (
+      <div className={`transition-all duration-300 ${isPanelOpen ? 'md:mr-[380px]' : ''}`}>
+        {currentCertification === 'practitioner' ? (
           <PractitionerDiagram
             selectedService={selectedService}
             onServiceClick={onServiceClick}
@@ -62,7 +64,7 @@ export function DiagramView({
           serviceInfo={currentServiceInfo}
           onClose={onClosePanel}
           onNext={onNextStep}
-          onPrev={onNextStep}
+          onPrev={onPrevStep}
           onTraining={onTraining}
         />
       )}

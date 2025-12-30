@@ -1,15 +1,15 @@
 export interface ExamQuestion {
-  id: number;
+  id: string;
   question: string;
-  context: string;
-  options: {
-    label: string;
-    text: string;
-  }[];
+  options: string[];
   correctAnswer: string;
-  explanation: string;
-  relatedService: string;
-  category: string;
+  explanation?: string;
+  domain?: string;
+  difficulty?: string;
+  category?: string;
+  multipleChoice?: boolean;
+  topic?: string;
+  status?: string;
 }
 
 export interface ExamState {
@@ -26,7 +26,7 @@ export interface ExamResult {
   correctAnswers: number;
   passed: boolean;
   timeSpent: number;
-  answers: Record<number, {
+  answers: Record<string, {
     selected: string;
     correct: string;
     isCorrect: boolean;

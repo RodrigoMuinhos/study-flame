@@ -32,7 +32,7 @@ export function StatsDashboard({ onBack }: StatsDashboardProps) {
   const xpForCurrentLevel = stats.level * stats.level * 50;
   const xpInCurrentLevel = stats.totalXP - xpForCurrentLevel;
   const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
-  const xpProgress = (xpInCurrentLevel / xpNeededForNextLevel) * 100;
+  const xpProgress = Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

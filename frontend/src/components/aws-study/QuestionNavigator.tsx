@@ -6,13 +6,19 @@ interface QuestionNavigatorProps {
   currentQuestion: number;
   answeredQuestions: Set<number>;
   onQuestionSelect: (questionNumber: number) => void;
+  correctQuestions?: Set<number>;
+  incorrectQuestions?: Set<number>;
+  showFeedback?: boolean;
 }
 
 export function QuestionNavigator({ 
   totalQuestions, 
   currentQuestion, 
   answeredQuestions,
-  onQuestionSelect 
+  onQuestionSelect,
+  correctQuestions = new Set(),
+  incorrectQuestions = new Set(),
+  showFeedback = false
 }: QuestionNavigatorProps) {
   const questions = Array.from({ length: totalQuestions }, (_, i) => i + 1);
 
@@ -23,6 +29,8 @@ export function QuestionNavigator({
         {questions.map((questionNum) => {
           const isAnswered = answeredQuestions.has(questionNum);
           const isCurrent = questionNum === currentQuestion;
+          const isCorrect = correctQuestions.has(questionNum);
+          const isIncorrect = incorrectQuestions.has(questionNum);
 
           let bgColor = 'bg-gray-100 hover:bg-gray-200';
           let textColor = 'text-gray-700';
@@ -32,6 +40,14 @@ export function QuestionNavigator({
             bgColor = 'bg-blue-600 hover:bg-blue-700';
             textColor = 'text-white';
             icon = <CircleDot size={12} className="text-white" />;
+          } else if (showFeedback && isCorrect) {
+            bgColor = 'bg-green-500 hover:bg-green-600';
+            textColor = 'text-white';
+            icon = <Check size={12} className="text-white" />;
+          } else if (showFeedback && isIncorrect) {
+            bgColor = 'bg-red-500 hover:bg-red-600';
+            textColor = 'text-white';
+            icon = <Check size={12} className="text-white" />;
           } else if (isAnswered) {
             bgColor = 'bg-green-100 hover:bg-green-200';
             textColor = 'text-green-700';
@@ -59,12 +75,29 @@ export function QuestionNavigator({
           </div>
           <span>Atual</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
-            <Check size={12} className="text-green-600" />
+        {showFeedback ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                <Check size={12} className="text-white" />
+              </div>
+              <span>Acertou</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-red-500 rounded flex items-center justify-center">
+                <Check size={12} className="text-white" />
+              </div>
+              <span>Errou</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+              <Check size={12} className="text-green-600" />
+            </div>
+            <span>Respondida</span>
           </div>
-          <span>Respondida</span>
-        </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center">
             <Circle size={12} className="text-gray-400" />

@@ -46,7 +46,7 @@ export function SidePanel({ serviceInfo, onClose, onNext, onPrev, onTraining }: 
       />
       
       {/* Panel */}
-      <div className="fixed inset-x-0 bottom-0 md:top-0 md:right-0 md:left-auto md:bottom-auto h-[85vh] md:h-full w-full md:w-[500px] bg-white shadow-2xl border-t-4 md:border-t-0 md:border-l-4 border-orange-500 overflow-y-auto z-50 animate-in slide-in-from-bottom md:slide-in-from-right duration-300 rounded-t-2xl md:rounded-none">
+      <div className="fixed inset-x-0 bottom-0 md:top-0 md:right-0 md:left-auto md:bottom-auto h-[85vh] md:h-full w-full md:w-[380px] bg-white shadow-2xl border-t-2 md:border-t-0 md:border-l-2 border-orange-500 overflow-y-auto z-50 animate-in slide-in-from-bottom md:slide-in-from-right duration-300 rounded-t-2xl md:rounded-none">
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-6 z-10">
           <div className="flex items-start justify-between mb-3">

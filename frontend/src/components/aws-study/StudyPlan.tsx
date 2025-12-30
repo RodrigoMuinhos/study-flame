@@ -9,7 +9,7 @@ import {
   CLF_4_WEEKS,
   CLF_8_WEEKS,
   CLF_12_WEEKS
-} from '@/data/studyPlanData';
+} from '../../data/studyPlanData';
 import { StudyPlanSelection } from './StudyPlanSelection';
 import { StudyPlanExecution } from './StudyPlanExecution';
 
@@ -71,7 +71,7 @@ export function StudyPlan({ onBack }: StudyPlanProps) {
   }, [selectedDuration, currentWeek, completedWeeks, completedActivities, notificationsEnabled, startDate, currentCertification]);
 
   const getPlanContent = (): WeekContent[] => {
-    if (currentCertification === 'SAA-C03') {
+    if (currentCertification === 'architect') {
       if (selectedDuration === 4) return SAA_4_WEEKS;
       if (selectedDuration === 8) return SAA_8_WEEKS;
       return SAA_12_WEEKS;
@@ -142,7 +142,7 @@ export function StudyPlan({ onBack }: StudyPlanProps) {
   };
 
   const getCertificationInfo = () => {
-    if (currentCertification === 'SAA-C03') {
+    if (currentCertification === 'architect') {
       return {
         name: 'SAA-C03',
         fullName: 'AWS Certified Solutions Architect - Associate'

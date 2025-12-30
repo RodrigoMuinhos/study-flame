@@ -36,9 +36,9 @@ export function BenefitsDemo({ onBack }: BenefitsDemoProps) {
             ✨ Componente 100% Responsivo
           </h3>
           <div className="space-y-2 text-xs sm:text-sm text-slate-600">
-            <p>• <strong>Mobile (< 640px):</strong> 1 coluna - layout vertical otimizado</p>
+            <p>• <strong>Mobile (&lt; 640px):</strong> 1 coluna - layout vertical otimizado</p>
             <p>• <strong>Tablet (640px - 1024px):</strong> 2 colunas - equilíbrio perfeito</p>
-            <p>• <strong>Desktop (> 1024px):</strong> 3 colunas - visualização completa</p>
+            <p>• <strong>Desktop (&gt; 1024px):</strong> 3 colunas - visualização completa</p>
             <p>• <strong>Breakwords:</strong> Todo texto se adapta sem ultrapassar containers</p>
             <p>• <strong>Overflow:</strong> Proteção contra overflow em todos os elementos</p>
           </div>

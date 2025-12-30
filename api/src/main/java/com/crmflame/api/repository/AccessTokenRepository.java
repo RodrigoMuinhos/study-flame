@@ -1,17 +1,18 @@
 package com.crmflame.api.repository;
 
-import com.crmflame.api.model.AccessToken;
-import com.crmflame.api.model.Lead;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.crmflame.api.model.AccessToken;
+import com.crmflame.api.model.Lead;
 
 @Repository
 public interface AccessTokenRepository extends JpaRepository<AccessToken, UUID> {

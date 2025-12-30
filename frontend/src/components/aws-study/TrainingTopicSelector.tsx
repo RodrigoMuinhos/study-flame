@@ -46,7 +46,10 @@ export function TrainingTopicSelector({ onSelectTopic, onBack }: TrainingTopicSe
   }, {} as Record<string, typeof topics>);
 
   // Função para renderizar o ícone corretamente
-  const renderIcon = (icon: string) => {
+  const renderIcon = (icon?: string) => {
+    if (!icon) {
+      return <Box size={32} />;
+    }
     // Se for emoji (começar com caractere emoji), renderiza diretamente
     if (icon.length <= 2 || /\p{Emoji}/u.test(icon)) {
       return <span className="text-4xl">{icon}</span>;

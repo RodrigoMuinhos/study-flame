@@ -1,0 +1,222 @@
+[
+  {
+    "question": "Qual é a durabilidade garantida pelo Amazon S3 Standard?",
+    "options": ["99,99%", "99,999999999% (11 noves)", "99,9%", "100%"],
+    "correctAnswer": "B",
+    "explanation": "O Amazon S3 Standard oferece durabilidade de 99,999999999% (11 noves), o que significa que os objetos são altamente resilientes e protegidos contra perda de dados através de replicação automática em múltiplas Zonas de Disponibilidade.",
+    "topic": "s3",
+    "domain": "storage",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que acontece quando você habilita versionamento no S3 e deleta um objeto?",
+    "options": ["O objeto é permanentemente deletado", "Um delete marker é criado", "Todas as versões são deletadas", "O versionamento é desabilitado"],
+    "correctAnswer": "B",
+    "explanation": "Quando o versionamento está habilitado e você deleta um objeto, o S3 não remove o objeto fisicamente. Em vez disso, insere um 'delete marker', que se torna a versão atual do objeto. As versões anteriores permanecem intactas e podem ser recuperadas.",
+    "topic": "s3",
+    "domain": "storage",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual classe de armazenamento do S3 é mais econômica para dados acessados raramente, mas que precisam estar disponíveis imediatamente quando necessário?",
+    "options": ["S3 Standard", "S3 Intelligent-Tiering", "S3 Standard-IA (Infrequent Access)", "S3 Glacier"],
+    "correctAnswer": "C",
+    "explanation": "S3 Standard-IA (Infrequent Access) é ideal para dados acessados com pouca frequência, mas que requerem acesso rápido quando necessário. Oferece menor custo de armazenamento que o S3 Standard, mas cobra por recuperação de dados.",
+    "topic": "s3",
+    "domain": "cost-optimization",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Como você pode hospedar um site estático no Amazon S3?",
+    "options": ["Não é possível hospedar sites no S3", "Habilitar 'Static Website Hosting' nas propriedades do bucket", "Usar Lambda@Edge obrigatoriamente", "Criar uma instância EC2 para servir os arquivos"],
+    "correctAnswer": "B",
+    "explanation": "Para hospedar um site estático no S3, você deve habilitar a opção 'Static Website Hosting' nas propriedades do bucket e especificar o documento index (como index.html) e opcionalmente um documento de erro. Os objetos devem ter permissões de leitura pública ou usar CloudFront com OAI.",
+    "topic": "s3",
+    "domain": "deployment",
+    "difficulty": "EASY",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual recurso do S3 permite mover automaticamente objetos entre classes de armazenamento com base em regras definidas?",
+    "options": ["S3 Replication", "S3 Lifecycle Policies", "S3 Transfer Acceleration", "S3 Select"],
+    "correctAnswer": "B",
+    "explanation": "S3 Lifecycle Policies permitem definir regras para transicionar objetos automaticamente entre classes de armazenamento (ex: de Standard para IA após 30 dias) ou deletar objetos após um período. Isso otimiza custos sem intervenção manual.",
+    "topic": "s3",
+    "domain": "cost-optimization",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual é o tamanho máximo de um único objeto que pode ser armazenado no S3?",
+    "options": ["5 GB", "5 TB", "100 GB", "Ilimitado"],
+    "correctAnswer": "B",
+    "explanation": "O tamanho máximo de um único objeto no S3 é 5 TB. Para uploads maiores que 100 MB, é recomendado usar Multipart Upload. Para uploads maiores que 5 GB, o Multipart Upload é obrigatório.",
+    "topic": "s3",
+    "domain": "storage",
+    "difficulty": "EASY",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que é S3 Transfer Acceleration e quando deve ser usado?",
+    "options": ["Acelera downloads locais", "Usa CloudFront edge locations para acelerar uploads de longa distância", "Comprime arquivos automaticamente", "Aumenta a velocidade de processamento Lambda"],
+    "correctAnswer": "B",
+    "explanation": "S3 Transfer Acceleration utiliza os edge locations do Amazon CloudFront para acelerar uploads para o S3 através de longas distâncias geográficas. Os dados são roteados para o edge location mais próximo e depois transferidos para o S3 através da rede otimizada da AWS.",
+    "topic": "s3",
+    "domain": "performance",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Como você pode garantir que objetos no S3 sejam criptografados em repouso?",
+    "options": ["Usar apenas HTTPS", "Habilitar SSE (Server-Side Encryption)", "Usar VPN", "Configurar Security Groups"],
+    "correctAnswer": "B",
+    "explanation": "SSE (Server-Side Encryption) criptografa objetos no S3 em repouso. Existem três opções: SSE-S3 (chaves gerenciadas pela AWS), SSE-KMS (chaves do AWS KMS), e SSE-C (chaves fornecidas pelo cliente). Você também pode habilitar criptografia padrão no bucket.",
+    "topic": "s3",
+    "domain": "security",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual recurso permite copiar objetos S3 automaticamente entre regiões ou contas AWS?",
+    "options": ["S3 Lifecycle", "S3 Cross-Region Replication (CRR)", "S3 Transfer Acceleration", "S3 Batch Operations"],
+    "correctAnswer": "B",
+    "explanation": "S3 Cross-Region Replication (CRR) replica automaticamente objetos entre buckets em diferentes regiões AWS. Também existe Same-Region Replication (SRR) para replicação na mesma região. Ambos requerem versionamento habilitado nos buckets de origem e destino.",
+    "topic": "s3",
+    "domain": "resilience",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que são S3 Presigned URLs?",
+    "options": ["URLs permanentes para acesso público", "URLs temporárias que concedem acesso limitado a objetos privados", "URLs para sites estáticos", "URLs do CloudFront"],
+    "correctAnswer": "B",
+    "explanation": "Presigned URLs são URLs temporárias geradas com credenciais AWS que concedem acesso temporário a objetos S3 privados. Elas expiram após um período definido e são úteis para permitir que usuários façam upload ou download de objetos sem precisar de credenciais AWS.",
+    "topic": "s3",
+    "domain": "security",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual classe de armazenamento S3 oferece o menor custo para dados arquivados com recuperação de 12 horas?",
+    "options": ["S3 Glacier Instant Retrieval", "S3 Glacier Flexible Retrieval", "S3 Glacier Deep Archive", "S3 Standard-IA"],
+    "correctAnswer": "C",
+    "explanation": "S3 Glacier Deep Archive oferece o menor custo de armazenamento, ideal para dados que raramente são acessados e podem tolerar 12 horas para recuperação padrão. É perfeito para arquivamento de longo prazo e conformidade regulatória.",
+    "topic": "s3",
+    "domain": "cost-optimization",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Como você pode impedir a deleção acidental de objetos no S3?",
+    "options": ["Usar IAM policies apenas", "Habilitar MFA Delete + Versionamento", "Usar encryption", "Configurar CloudWatch"],
+    "correctAnswer": "B",
+    "explanation": "MFA Delete requer autenticação multifator para deletar permanentemente versões de objetos ou suspender o versionamento. Deve ser habilitado junto com o versionamento do bucket e só pode ser configurado pelo root user da conta.",
+    "topic": "s3",
+    "domain": "security",
+    "difficulty": "HARD",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que é S3 Object Lock e para que serve?",
+    "options": ["Bloqueia acesso público", "Impede modificação ou deleção de objetos por período definido (WORM)", "Criptografa objetos", "Otimiza performance"],
+    "correctAnswer": "B",
+    "explanation": "S3 Object Lock implementa um modelo WORM (Write Once Read Many), impedindo que objetos sejam deletados ou sobrescritos por um período definido. É usado para conformidade regulatória e retenção de dados. Pode ser configurado em modo Governance ou Compliance.",
+    "topic": "s3",
+    "domain": "security",
+    "difficulty": "HARD",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual é o propósito do S3 Intelligent-Tiering?",
+    "options": ["Mover dados para Glacier automaticamente", "Mover objetos automaticamente entre tiers de acesso baseado em padrões de uso", "Acelerar uploads", "Criptografar dados"],
+    "correctAnswer": "B",
+    "explanation": "S3 Intelligent-Tiering monitora padrões de acesso e move automaticamente objetos entre tiers (Frequent, Infrequent, Archive) para otimizar custos. Não há taxas de recuperação e é ideal quando os padrões de acesso são desconhecidos ou mudam ao longo do tempo.",
+    "topic": "s3",
+    "domain": "cost-optimization",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Como você pode servir um site S3 com HTTPS usando domínio personalizado?",
+    "options": ["Não é possível usar HTTPS no S3", "Usar CloudFront com ACM certificate", "Configurar SSL direto no bucket", "Usar Route 53 apenas"],
+    "correctAnswer": "B",
+    "explanation": "Para servir um site S3 com HTTPS e domínio personalizado, você deve usar CloudFront como CDN na frente do bucket S3, configurar um certificado SSL/TLS no ACM (AWS Certificate Manager) e apontar seu domínio (via Route 53) para a distribuição CloudFront.",
+    "topic": "s3",
+    "domain": "deployment",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que são S3 Event Notifications e como podem ser usados?",
+    "options": ["Notificações por email quando bucket está cheio", "Gatilhos automáticos para Lambda, SQS ou SNS quando objetos são criados/deletados", "Alertas de custo", "Logs de acesso"],
+    "correctAnswer": "B",
+    "explanation": "S3 Event Notifications permitem configurar ações automáticas quando eventos ocorrem no bucket (ex: objeto criado, deletado, restaurado). Podem disparar funções Lambda, enviar mensagens para SQS/SNS, permitindo arquiteturas event-driven e processamento automático de arquivos.",
+    "topic": "s3",
+    "domain": "integration",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual é a diferença entre Block Public Access e Bucket Policies no S3?",
+    "options": ["São a mesma coisa", "Block Public Access é uma camada adicional de segurança que anula permissões públicas", "Bucket Policies são mais seguros", "Block Public Access apenas para novos objetos"],
+    "correctAnswer": "B",
+    "explanation": "Block Public Access é uma configuração de segurança em nível de conta ou bucket que sobrescreve outras políticas, garantindo que nenhum acesso público seja concedido mesmo que Bucket Policies ou ACLs permitam. É uma camada adicional de proteção contra exposição acidental de dados.",
+    "topic": "s3",
+    "domain": "security",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Como o S3 cobra pelo armazenamento?",
+    "options": ["Taxa fixa mensal", "Por GB armazenado por mês + requisições + transferência de dados", "Apenas por transferência de dados", "Apenas por número de objetos"],
+    "correctAnswer": "B",
+    "explanation": "O S3 cobra por: 1) Volume de armazenamento (GB/mês), 2) Número e tipo de requisições (PUT, GET, etc), 3) Transferência de dados para fora da AWS, 4) Recursos adicionais como replicação ou analytics. O custo varia por classe de armazenamento.",
+    "topic": "s3",
+    "domain": "cost-optimization",
+    "difficulty": "EASY",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "O que é Multipart Upload e quando deve ser usado?",
+    "options": ["Upload de múltiplos arquivos simultaneamente", "Dividir arquivos grandes em partes para upload paralelo e resiliente", "Upload criptografado", "Upload entre regiões"],
+    "correctAnswer": "B",
+    "explanation": "Multipart Upload divide um arquivo grande em partes menores que são enviadas em paralelo, melhorando throughput e permitindo pausar/retomar. É recomendado para arquivos > 100 MB e obrigatório para > 5 GB. Aumenta resiliência pois partes falhadas podem ser reenviadas individualmente.",
+    "topic": "s3",
+    "domain": "performance",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  },
+  {
+    "question": "Qual recurso permite executar consultas SQL diretamente em objetos S3?",
+    "options": ["S3 Batch Operations", "S3 Select e Athena", "S3 Analytics", "Lambda@Edge"],
+    "correctAnswer": "B",
+    "explanation": "S3 Select permite executar consultas SQL simples diretamente em objetos (CSV, JSON, Parquet) para recuperar apenas os dados necessários. Amazon Athena oferece análise SQL mais avançada em grandes volumes de dados no S3 usando tabelas e schemas.",
+    "topic": "s3",
+    "domain": "analytics",
+    "difficulty": "MEDIUM",
+    "status": "ACTIVE",
+    "multipleChoice": false
+  }
+]

@@ -1,56 +1,69 @@
 import React from 'react';
 
 export interface ExamQuestion {
-  id: number;
+  id: string;
   question: string;
-  context: string;
-  options: { label: string; text: string }[];
+  options: string[];
   correctAnswer: string;
-  explanation: string;
-  category: string;
-  relatedService: string;
+  explanation?: string;
+  domain?: string;
+  difficulty?: string;
+  category?: string;
+  multipleChoice?: boolean;
+  topic?: string;
+  status?: string;
 }
 
 interface ExamQuestionCardProps {
   question: ExamQuestion;
+  questionNumber: number;
   selectedAnswer: string | null;
   onAnswerSelect: (answer: string) => void;
   showResults?: boolean;
 }
 
 export function ExamQuestionCard({ 
-  question, 
+  question,
+  questionNumber,
   selectedAnswer, 
   onAnswerSelect,
   showResults = false 
 }: ExamQuestionCardProps) {
+  const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+  
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
       {/* Número da questão */}
       <div className="mb-4">
         <span className="text-sm font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
-          Questão {question.id}
+          Questão {questionNumber}
         </span>
+        {question.difficulty && (
+          <span className={`ml-2 text-xs font-semibold px-3 py-1 rounded-full ${
+            question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+            question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {question.difficulty === 'easy' ? 'Fácil' : 
+             question.difficulty === 'medium' ? 'Médio' : 'Difícil'}
+          </span>
+        )}
       </div>
 
       {/* Enunciado */}
-      <h2 className="text-xl md:text-2xl text-gray-900 mb-4 leading-relaxed">
+      <h2 className="text-xl md:text-2xl text-gray-900 mb-6 leading-relaxed">
         {question.question}
       </h2>
 
-      {/* Contexto/Cenário */}
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
-        <p className="text-sm text-gray-700 leading-relaxed">
-          <span className="font-semibold text-blue-700">Contexto: </span>
-          {question.context}
-        </p>
-      </div>
-
       {/* Alternativas */}
       <div className="space-y-3">
-        {question.options.map((option) => {
-          const isSelected = selectedAnswer === option.label;
-          const isCorrect = option.label === question.correctAnswer;
+        {question.options
+          .filter(opt => opt && opt.trim() !== '')
+          .slice(0, 4)
+          .map((optionText, index) => {
+          const optionLabel = optionLabels[index];
+          const isSelected = selectedAnswer === optionLabel;
+          const isCorrect = optionLabel === question.correctAnswer;
           
           let borderColor = 'border-gray-300';
           let bgColor = 'bg-white hover:bg-gray-50';
@@ -74,8 +87,8 @@ export function ExamQuestionCard({
 
           return (
             <button
-              key={option.label}
-              onClick={() => !showResults && onAnswerSelect(option.label)}
+              key={optionLabel}
+              onClick={() => !showResults && onAnswerSelect(optionLabel)}
               disabled={showResults}
               className={`w-full text-left border-2 ${borderColor} ${bgColor} ${textColor} rounded-lg p-4 transition-all ${
                 !showResults ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
@@ -91,34 +104,36 @@ export function ExamQuestionCard({
                     ? 'bg-orange-600 text-white' 
                     : 'bg-gray-200 text-gray-700'
                 }`}>
-                  {option.label}
+                  {optionLabel}
                 </div>
-                <p className="flex-1 leading-relaxed pt-1">{option.text}</p>
+                <p className="flex-1 leading-relaxed pt-1">{optionText}</p>
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* Explicação (apenas em modo resultado) */}
-      {showResults && (
-        <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-5">
-          <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-            <span className="text-lg">💡</span>
-            Explicação
-          </h3>
-          <p className="text-sm text-gray-700 leading-relaxed mb-3">
-            {question.explanation}
-          </p>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="bg-blue-600 text-white px-2 py-1 rounded font-medium">
-              {question.category}
+      {/* Explicação (apenas quando mostrando resultados) */}
+      {showResults && question.explanation && (
+        <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+          <h3 className="font-semibold text-blue-900 mb-2">Explicação:</h3>
+          <p className="text-sm text-gray-700 leading-relaxed">{question.explanation}</p>
+        </div>
+      )}
+
+      {/* Informações adicionais */}
+      {showResults && (question.domain || question.topic) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {question.domain && (
+            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              Domínio: {question.domain}
             </span>
-            <span className="text-gray-500">•</span>
-            <span className="text-gray-600">
-              Serviço relacionado: {question.relatedService}
+          )}
+          {question.topic && (
+            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              Tópico: {question.topic}
             </span>
-          </div>
+          )}
         </div>
       )}
     </div>

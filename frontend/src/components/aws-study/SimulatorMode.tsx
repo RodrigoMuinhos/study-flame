@@ -189,10 +189,10 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
 
   // Question Screen
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4 md:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-5 md:p-6 mb-4">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={onBack}
@@ -231,7 +231,7 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
 
         {/* Context */}
         {currentQuestion.context && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-6 mb-6">
+          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4 md:p-5 mb-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="text-blue-600 flex-shrink-0 mt-1" size={24} />
               <div>
@@ -243,8 +243,8 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
         )}
 
         {/* Question */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+        <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 lg:p-8 mb-4">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 leading-relaxed">
             {currentQuestion.question}
           </h2>
 
@@ -275,10 +275,10 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
                   key={option.label}
                   onClick={() => handleAnswerSelect(option.label)}
                   disabled={answerConfirmed}
-                  className={`w-full text-left p-5 rounded-xl border-2 transition-all ${optionStyle} ${answerConfirmed ? 'cursor-default' : ''}`}
+                  className={`w-full text-left p-4 md:p-5 rounded-xl border-2 transition-all ${optionStyle} ${answerConfirmed ? 'cursor-default' : ''}`}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${circleStyle}`}>
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-base ${circleStyle}`}>
                       {answerConfirmed && isThisOptionCorrect ? (
                         <CheckCircle size={20} />
                       ) : answerConfirmed && isThisOptionSelected && !isThisOptionCorrect ? (
@@ -287,7 +287,7 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
                         option.label
                       )}
                     </div>
-                    <p className="text-gray-900 leading-relaxed flex-1">{option.text}</p>
+                    <p className="text-base md:text-lg text-gray-900 leading-relaxed flex-1">{option.text}</p>
                   </div>
                 </button>
               );
@@ -296,7 +296,7 @@ export function SimulatorMode({ config, onBack, questions }: SimulatorModeProps)
 
           {/* Inline Feedback */}
           {answerConfirmed && config.showFeedback && (
-            <div className={`mt-6 rounded-xl p-6 ${isCorrect ? 'bg-green-50 border-2 border-green-400' : 'bg-red-50 border-2 border-red-400'}`}>
+            <div className={`mt-4 md:mt-5 rounded-xl p-4 md:p-5 ${isCorrect ? 'bg-green-50 border-2 border-green-400' : 'bg-red-50 border-2 border-red-400'}`}>
               <div className="flex items-center gap-3 mb-4">
                 {isCorrect ? (
                   <CheckCircle className="text-green-600" size={32} />

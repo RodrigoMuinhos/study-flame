@@ -6,9 +6,10 @@ interface PreExamInstructionsProps {
   onBack: () => void;
   timeLimit: number;
   totalQuestions: number;
+  loading?: boolean;
 }
 
-export function PreExamInstructions({ onStartExam, onBack, timeLimit, totalQuestions }: PreExamInstructionsProps) {
+export function PreExamInstructions({ onStartExam, onBack, timeLimit, totalQuestions, loading = false }: PreExamInstructionsProps) {
   const instructions = [
     {
       icon: Droplet,
@@ -170,10 +171,20 @@ export function PreExamInstructions({ onStartExam, onBack, timeLimit, totalQuest
 
         <button
           onClick={onStartExam}
-          className="w-full bg-white text-green-600 px-8 py-6 rounded-xl font-bold text-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 hover:scale-105"
+          disabled={loading}
+          className="w-full bg-white text-green-600 px-8 py-6 rounded-xl font-bold text-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
-          <Rocket size={32} />
-          Começar Agora
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              Carregando...
+            </>
+          ) : (
+            <>
+              <Rocket size={32} />
+              Começar Agora
+            </>
+          )}
         </button>
 
         <div className="mt-6 text-center">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ExamConfigScreen, ExamConfig } from './ExamConfigScreen';
-import { ExamSimulator } from './ExamSimulator';
+import { ExamSimulatorNew } from './ExamSimulatorNew';
 
 interface ExamSimulatorWrapperProps {
   onBackToDiagram: () => void;
@@ -19,7 +19,7 @@ export function ExamSimulatorWrapper({ onBackToDiagram }: ExamSimulatorWrapperPr
   }
 
   return (
-    <ExamSimulator
+    <ExamSimulatorNew
       config={examConfig}
       onBackToConfig={() => setExamConfig(null)}
       onBackToDiagram={onBackToDiagram}

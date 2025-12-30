@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { GraduationCap, Clock, AlertCircle, CheckCircle, Trophy, Play, Shield } from 'lucide-react';
 import { PreExamInstructions } from './PreExamInstructions';
 import { OfficialExamSimulator } from './OfficialExamSimulator';
-import { generateRandomExam, getQuestionBankStats } from '@/utils/examGenerator';
-import { ExamQuestion } from '@/data/examQuestionsBank1';
+import { awsExamService } from '@/services/api';
 
 interface OfficialExamScreenProps {
   onStart: () => void;
@@ -13,8 +13,10 @@ interface OfficialExamScreenProps {
 type ExamScreen = 'info' | 'instructions' | 'exam';
 
 export function OfficialExamScreen({ onStart, onBack }: OfficialExamScreenProps) {
+  const router = useRouter();
   const [currentScreen, setCurrentScreen] = useState<ExamScreen>('info');
-  const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
+  const [examQuestions, setExamQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Dados da certificação
   const certification = {
@@ -34,19 +36,25 @@ export function OfficialExamScreen({ onStart, onBack }: OfficialExamScreenProps)
     ]
   };
 
-  const questionBankStats = getQuestionBankStats();
-
   // Handler para avançar para instruções
   const handleGoToInstructions = () => {
     setCurrentScreen('instructions');
   };
 
   // Handler para iniciar o exame
-  const handleStartExam = () => {
-    // Gerar exame aleatório com 65 questões
-    const questions = generateRandomExam(65);
-    setExamQuestions(questions);
-    setCurrentScreen('exam');
+  const handleStartExam = async () => {
+    try {
+      setLoading(true);
+      // Buscar 65 questões aleatórias do backend
+      const questions = await awsExamService.getRandomQuestions(65);
+      setExamQuestions(questions);
+      setCurrentScreen('exam');
+    } catch (err) {
+      console.error('Erro ao carregar questões:', err);
+      alert('Erro ao carregar questões. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handler para voltar
@@ -58,6 +66,29 @@ export function OfficialExamScreen({ onStart, onBack }: OfficialExamScreenProps)
     }
   };
 
+  // Tela do Exame
+  if (currentScreen === 'exam') {
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-blue-600 mx-auto mb-6"></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Carregando Prova Oficial</h2>
+            <p className="text-gray-600">Preparando suas 65 questões...</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <OfficialExamSimulator
+        examQuestions={examQuestions}
+        timeLimit={examDetails.timeLimit}
+        onBack={onBack}
+      />
+    );
+  }
+
   // Tela de Instruções Pré-Exame
   if (currentScreen === 'instructions') {
     return (
@@ -66,17 +97,7 @@ export function OfficialExamScreen({ onStart, onBack }: OfficialExamScreenProps)
         onBack={handleBack}
         timeLimit={examDetails.timeLimit}
         totalQuestions={examDetails.totalQuestions}
-      />
-    );
-  }
-
-  // Tela do Exame Ativo
-  if (currentScreen === 'exam' && examQuestions.length > 0) {
-    return (
-      <OfficialExamSimulator
-        examQuestions={examQuestions}
-        timeLimit={examDetails.timeLimit}
-        onBack={onBack}
+        loading={loading}
       />
     );
   }
@@ -221,36 +242,6 @@ export function OfficialExamScreen({ onStart, onBack }: OfficialExamScreenProps)
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Question Bank Stats */}
-      <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border-2 border-green-200 shadow-xl p-8 mb-6">
-        <h3 className="text-2xl font-bold text-gray-900 mb-4">📚 Banco de Questões</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-          <div className="bg-white rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold text-green-600">{questionBankStats.total}</div>
-            <div className="text-sm text-gray-600">Total de Questões</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold text-blue-600">{questionBankStats.byDomain.resilient}</div>
-            <div className="text-sm text-gray-600">Resilient</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold text-green-600">{questionBankStats.byDomain.performance}</div>
-            <div className="text-sm text-gray-600">Performance</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold text-orange-600">{questionBankStats.byDomain.secure}</div>
-            <div className="text-sm text-gray-600">Security</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold text-purple-600">{questionBankStats.byDomain.cost}</div>
-            <div className="text-sm text-gray-600">Cost</div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-700 text-center">
-          ✨ Cada exame é único! Questões selecionadas aleatoriamente com distribuição correta por domínios
-        </p>
       </div>
 
       {/* Start Button */}

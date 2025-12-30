@@ -1,21 +1,29 @@
 package com.crmflame.api.service;
 
-import com.crmflame.api.dto.GamificationDTO;
-import com.crmflame.api.dto.GamificationDTO.LevelInfo;
-import com.crmflame.api.dto.GamificationDTO.BadgeDTO;
-import com.crmflame.api.dto.GamificationDTO.Stats;
-import com.crmflame.api.model.*;
-import com.crmflame.api.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.crmflame.api.dto.GamificationDTO;
+import com.crmflame.api.dto.GamificationDTO.BadgeDTO;
+import com.crmflame.api.dto.GamificationDTO.LevelInfo;
+import com.crmflame.api.dto.GamificationDTO.Stats;
+import com.crmflame.api.model.Badge;
+import com.crmflame.api.model.Lead;
+import com.crmflame.api.model.StudentBadge;
+import com.crmflame.api.model.StudentProgress;
+import com.crmflame.api.repository.BadgeRepository;
+import com.crmflame.api.repository.LeadRepository;
+import com.crmflame.api.repository.StudentBadgeRepository;
+import com.crmflame.api.repository.StudentProgressRepository;
+
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class GamificationService {
