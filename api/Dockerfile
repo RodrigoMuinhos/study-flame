@@ -2,6 +2,7 @@
 # CRM FLAME API - Dockerfile
 # =====================
 # Multi-stage build para otimização
+# Updated: 2025-12-30
 
 # Stage 1: Build
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
@@ -13,7 +14,7 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
 # Copiar código fonte e compilar
-COPY src ./src
+COPY src/ ./src/
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime
