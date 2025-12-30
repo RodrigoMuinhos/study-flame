@@ -1,4 +1,4 @@
-# Simple Build Stage
+# Build Stage
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /workspace
 COPY api/ .
@@ -10,6 +10,7 @@ WORKDIR /app
 COPY --from=builder /workspace/target/*.jar app.jar
 EXPOSE 8080
 CMD ["java", "-jar", "app.jar"]
+# Force rebuild: 2025-12-30-14:00:00
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
