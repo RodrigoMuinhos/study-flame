@@ -2,8 +2,8 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-COPY pom.xml .
-COPY src ./src
+COPY api/pom.xml .
+COPY api/src ./src
 RUN mvn clean package -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
