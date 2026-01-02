@@ -238,8 +238,6 @@ Seja muito bem-vindo(a) ao Bootcamp FLAME - do Zero ao Deploy.
 
 Você foi selecionado(a) para usar nossa plataforma de estudos (a trilha completa com aulas, desafios e progresso).
 
-*Banner do Bootcamp:*
-https://study-flame.vercel.app/Flamebanner.png
 
 *Entre no grupo oficial (avisos + suporte + materiais):*
 https://chat.whatsapp.com/BMoAhtm2ofhCRPxCgAcFmB
