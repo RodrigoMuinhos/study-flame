@@ -80,18 +80,16 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ checked, onChange, id }) =>
 
 // VideoBackground Component (now static image for performance)
 const VideoBackground: React.FC<VideoBackgroundProps> = ({ videoUrl }) => {
-    const backgroundImage = videoUrl && /\.(mp4|webm|mov|ogg)$/i.test(videoUrl)
-        ? '/Flamebanner.png'
-        : (videoUrl || '/Flamebanner.png');
+    const backgroundImage = '/imagemfundo.png';
 
     return (
         <div className="absolute inset-0 w-full h-full overflow-hidden">
             <div
-                className="absolute inset-0 bg-[length:110%] bg-center bg-cover scale-105 blur-[0.5px]"
+                className="absolute inset-0 bg-[length:cover] bg-center bg-cover"
                 style={{ backgroundImage: `url(${backgroundImage})` }}
                 aria-hidden
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
         </div>
     );
 };
