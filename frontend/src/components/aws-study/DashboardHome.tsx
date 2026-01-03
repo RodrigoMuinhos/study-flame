@@ -97,20 +97,20 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-2xl">
-        <div className="flex items-center justify-between">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-4 md:p-8 text-white shadow-2xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Bem-vindo de volta! 👋</h1>
-            <p className="text-orange-100 text-lg mb-6">
+            <h1 className="text-2xl md:text-4xl font-bold mb-2">Bem-vindo de volta! 👋</h1>
+            <p className="text-orange-100 text-sm md:text-lg mb-4 md:mb-6">
               Continue sua jornada rumo à certificação AWS Solutions Architect Associate
             </p>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-                <Flame className="text-yellow-300" size={20} />
+            <div className="flex flex-wrap items-center gap-3 md:gap-6">
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base">
+                <Flame className="text-yellow-300" size={18} />
                 <span className="font-bold">{mounted ? stats.currentStreak : 0} dias de streak!</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-                <Trophy className="text-yellow-300" size={20} />
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base">
+                <Trophy className="text-yellow-300" size={18} />
                 <span className="font-bold">Nível {mounted ? stats.level : 1}</span>
               </div>
             </div>
@@ -157,38 +157,38 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
           : '';
         
         return (
-          <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-orange-200">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border-2 border-orange-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <div className="text-xs text-slate-500 uppercase mb-1">Última Prova</div>
-                <h3 className="text-xl font-bold text-slate-900">{examMode}</h3>
+                <h3 className="text-lg md:text-xl font-bold text-slate-900">{examMode}</h3>
               </div>
               <button
                 onClick={() => router.push(`/aws-study/exam/${lastExam.id}/review`)}
-                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-lg transition text-sm"
+                className="px-3 py-2 md:px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-lg transition text-xs md:text-sm w-full sm:w-auto"
               >
                 🔄 Revisão Inteligente
               </button>
             </div>
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 md:gap-4">
               <div className="text-center">
-                <div className={`text-3xl font-bold mb-1 ${score >= 72 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-xl md:text-3xl font-bold mb-1 ${score >= 72 ? 'text-green-600' : 'text-red-600'}`}>
                   {score}%
                 </div>
-                <div className="text-xs text-slate-600">Acurácia</div>
+                <div className="text-[10px] md:text-xs text-slate-600">Acurácia</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-1">
+                <div className="text-xl md:text-3xl font-bold text-blue-600 mb-1">
                   {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
                 </div>
-                <div className="text-xs text-slate-600">Tempo</div>
+                <div className="text-[10px] md:text-xs text-slate-600">Tempo</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-slate-700 mb-1">
+                <div className="text-xl md:text-3xl font-bold text-slate-700 mb-1">
                   {dateStr}
                 </div>
-                <div className="text-xs text-slate-600">Data</div>
+                <div className="text-[10px] md:text-xs text-slate-600">Data</div>
               </div>
             </div>
           </div>
@@ -197,15 +197,15 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-purple-100 hover:border-purple-300 transition-all cursor-pointer hover:shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <GraduationCap className="text-white" size={24} />
+        <div className="bg-white rounded-2xl p-4 md:p-6 shadow-lg border-2 border-purple-100 hover:border-purple-300 transition-all cursor-pointer hover:shadow-xl">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <GraduationCap className="text-white" size={20} />
             </div>
-            <TrendingUp className="text-green-500" size={20} />
+            <TrendingUp className="text-green-500" size={18} />
           </div>
-          <div className="text-3xl font-bold text-slate-900 mb-1">{stats.totalExams}</div>
-          <div className="text-sm text-slate-600">Provas Realizadas</div>
+          <div className="text-2xl md:text-3xl font-bold text-slate-900 mb-1">{stats.totalExams}</div>
+          <div className="text-xs md:text-sm text-slate-600">Provas Realizadas</div>
           {stats.totalExams > 0 && (
             <div className="mt-3 text-xs text-green-600 font-semibold">
               +{stats.examHistory.filter(e => new Date(e.date).getTime() > Date.now() - 7*24*60*60*1000).length} esta semana
@@ -386,14 +386,14 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
       )}
 
       {/* Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <div
           onClick={onSelectDiagram}
-          className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <Target size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Diagrama Interativo</h3>
-          <p className="text-orange-100 text-sm mb-4">Explore 18 componentes AWS</p>
+          <Target size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Diagrama Interativo</h3>
+          <p className="text-orange-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Explore 18 componentes AWS</p>
           <div className="flex items-center gap-2 text-sm font-semibold">
             <span>Explorar</span>
             <span>→</span>
@@ -402,12 +402,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectTraining}
-          className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <BookOpen size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Modo Treino</h3>
-          <p className="text-green-100 text-sm mb-4">320 questões em 16 tópicos</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <BookOpen size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Modo Treino</h3>
+          <p className="text-green-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">320 questões em 16 tópicos</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Treinar</span>
             <span>→</span>
           </div>
@@ -415,12 +415,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectExam}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <GraduationCap size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Simulador</h3>
-          <p className="text-blue-100 text-sm mb-4">Provas configuráveis com timer</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <GraduationCap size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Simulador</h3>
+          <p className="text-blue-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Provas configuráveis com timer</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Simular</span>
             <span>→</span>
           </div>
@@ -428,12 +428,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectOfficialExam}
-          className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <GraduationCap size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Prova Oficial</h3>
-          <p className="text-red-100 text-sm mb-4">Prova oficial com timer</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <GraduationCap size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Prova Oficial</h3>
+          <p className="text-red-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Prova oficial com timer</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Prova Oficial</span>
             <span>→</span>
           </div>
@@ -441,12 +441,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectStats}
-          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <BarChart3 size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Estatísticas</h3>
-          <p className="text-purple-100 text-sm mb-4">Histórico e análises detalhadas</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <BarChart3 size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Estatísticas</h3>
+          <p className="text-purple-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Histórico e análises detalhadas</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Ver mais</span>
             <span>→</span>
           </div>
@@ -454,12 +454,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectStudyPlan}
-          className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <BookOpen size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Plano de Estudos</h3>
-          <p className="text-indigo-100 text-sm mb-4">Crie e gerencie seu plano de estudos</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <BookOpen size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Plano de Estudos</h3>
+          <p className="text-indigo-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Crie e gerencie seu plano de estudos</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Plano de Estudos</span>
             <span>→</span>
           </div>
@@ -467,12 +467,12 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
 
         <div
           onClick={onSelectReview}
-          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105 active:scale-95"
         >
-          <BookOpen size={32} className="mb-4" />
-          <h3 className="text-xl font-bold mb-2">Revisão</h3>
-          <p className="text-yellow-100 text-sm mb-4">Foco em erros recorrentes</p>
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <BookOpen size={24} className="mb-2 md:mb-4 md:w-8 md:h-8" />
+          <h3 className="text-sm md:text-xl font-bold mb-1 md:mb-2">Revisão</h3>
+          <p className="text-yellow-100 text-[10px] md:text-sm mb-2 md:mb-4 line-clamp-2">Foco em erros recorrentes</p>
+          <div className="flex items-center gap-2 text-xs md:text-sm font-semibold">
             <span>Revisar</span>
             <span>→</span>
           </div>

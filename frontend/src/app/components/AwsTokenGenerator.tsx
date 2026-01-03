@@ -202,36 +202,36 @@ Bons estudos!`;
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 ring-2 ring-primary/30">
-            <Cloud className="h-6 w-6 text-primary" />
+          <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10 ring-2 ring-primary/30">
+            <Cloud className="h-5 w-5 md:h-6 md:w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Gerador de Tokens AWS Study</h1>
-            <p className="text-sm text-muted-foreground">Gere tokens de acesso para a área exclusiva de estudos AWS</p>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Token AWS Study</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Gere tokens de acesso à área AWS</p>
           </div>
         </div>
       </div>
 
       {/* Card Principal */}
-      <div className="rounded-2xl bg-card p-6 shadow-lg border border-border">
-        <div className="mb-6 flex items-center gap-2">
-          <Key className="text-primary" size={24} />
-          <h3 className="text-xl font-semibold text-foreground">
+      <div className="rounded-xl md:rounded-2xl bg-card p-4 md:p-6 shadow-lg border border-border">
+        <div className="mb-4 md:mb-6 flex items-center gap-2">
+          <Key className="text-primary" size={20} />
+          <h3 className="text-base md:text-xl font-semibold text-foreground">
             🔐 Gerar Token de Acesso
           </h3>
         </div>
 
         {/* Campo de busca por CPF */}
-        <div className="mb-6">
-          <label className="mb-2 block text-sm font-medium text-foreground">
+        <div className="mb-4 md:mb-6">
+          <label className="mb-2 block text-xs md:text-sm font-medium text-foreground">
             Buscar Aluno por CPF
           </label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1">
               <input
                 type="text"
@@ -239,26 +239,26 @@ Bons estudos!`;
                 onChange={(e) => setTokenSearchCpf(e.target.value.replace(/\D/g, '').slice(0, 11))}
                 onKeyDown={(e) => e.key === 'Enter' && searchLeadByCpf()}
                 placeholder="Digite o CPF (apenas números)"
-                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg md:rounded-xl border border-border bg-muted/30 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {tokenSearchCpf && (
                 <button
                   onClick={clearTokenSearch}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               )}
             </div>
             <button
               onClick={searchLeadByCpf}
               disabled={searchingLead || tokenSearchCpf.length !== 11}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg md:rounded-xl bg-primary px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {searchingLead ? (
-                <RefreshCw className="animate-spin" size={18} />
+                <RefreshCw className="animate-spin" size={16} />
               ) : (
-                <Search size={18} />
+                <Search size={16} />
               )}
               Buscar
             </button>
@@ -270,47 +270,47 @@ Bons estudos!`;
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-muted/30 border border-border p-6"
+            className="rounded-lg md:rounded-xl bg-muted/30 border border-border p-4 md:p-6"
           >
             {/* Dados do Aluno */}
-            <div className="mb-6 flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
+            <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-full bg-primary text-base md:text-xl font-bold text-primary-foreground shrink-0">
                   {foundLead.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h4 className="text-lg font-semibold text-foreground">{foundLead.name}</h4>
-                  <p className="text-sm text-muted-foreground">{foundLead.email}</p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    CPF: <code className="rounded bg-primary/10 px-2 py-0.5 font-mono text-primary">{maskCpf(foundLead.cpf)}</code>
-                    <span className="text-xs text-primary">(LGPD)</span>
+                <div className="min-w-0">
+                  <h4 className="text-base md:text-lg font-semibold text-foreground truncate">{foundLead.name}</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">{foundLead.email}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-1 md:gap-2 flex-wrap">
+                    CPF: <code className="rounded bg-primary/10 px-1.5 md:px-2 py-0.5 font-mono text-xs text-primary">{maskCpf(foundLead.cpf)}</code>
+                    <span className="text-[10px] text-primary">(LGPD)</span>
                   </p>
                 </div>
               </div>
               
               {/* Status do Token */}
               {activeToken ? (
-                <div className={`flex items-center gap-2 rounded-full px-4 py-2 ${
+                <div className={`flex items-center gap-1.5 md:gap-2 rounded-full px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm shrink-0 ${
                   activeToken.expired 
                     ? 'bg-red-500/20 ring-1 ring-red-500/30' 
                     : 'bg-green-500/20 ring-1 ring-green-500/30'
                 }`}>
                   {activeToken.expired ? (
                     <>
-                      <AlertTriangle size={16} className="text-red-400" />
-                      <span className="text-sm font-medium text-red-400">Token Expirado</span>
+                      <AlertTriangle size={14} className="text-red-400" />
+                      <span className="font-medium text-red-400">Expirado</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle size={16} className="text-green-400" />
-                      <span className="text-sm font-medium text-green-400">Token Ativo</span>
+                      <CheckCircle size={14} className="text-green-400" />
+                      <span className="font-medium text-green-400">Ativo</span>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-full bg-yellow-500/20 px-4 py-2 ring-1 ring-yellow-500/30">
-                  <XCircle size={16} className="text-yellow-400" />
-                  <span className="text-sm font-medium text-yellow-400">Sem Token</span>
+                <div className="flex items-center gap-1.5 md:gap-2 rounded-full bg-yellow-500/20 px-3 md:px-4 py-1.5 md:py-2 ring-1 ring-yellow-500/30 text-xs md:text-sm shrink-0">
+                  <XCircle size={14} className="text-yellow-400" />
+                  <span className="font-medium text-yellow-400">Sem Token</span>
                 </div>
               )}
             </div>
@@ -320,78 +320,73 @@ Bons estudos!`;
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mb-6 rounded-xl bg-green-500/10 border border-green-500/30 p-5"
+                className="mb-4 md:mb-6 rounded-lg md:rounded-xl bg-green-500/10 border border-green-500/30 p-3 md:p-5"
               >
-                <div className="mb-3 flex items-center gap-2">
-                  <CheckCircle className="text-green-600" size={20} />
-                  <span className="font-semibold text-green-600">
-                    {generatedToken ? '✅ Token Gerado com Sucesso!' : 'Token Atual'}
+                <div className="mb-2 md:mb-3 flex items-center gap-2">
+                  <CheckCircle className="text-green-600" size={18} />
+                  <span className="text-sm md:text-base font-semibold text-green-600">
+                    {generatedToken ? '✅ Token Gerado!' : 'Token Atual'}
                   </span>
                 </div>
                 
                 {/* Token Display */}
-                <div className="mb-4 flex flex-col items-center gap-4">
-                  <code className="rounded-xl bg-primary/10 px-6 py-4 text-2xl font-bold tracking-widest text-primary shadow-inner border border-primary/20">
+                <div className="mb-3 md:mb-4 flex flex-col items-center gap-3 md:gap-4">
+                  <code className="rounded-lg md:rounded-xl bg-primary/10 px-3 md:px-6 py-2 md:py-4 text-lg md:text-2xl font-bold tracking-widest text-primary shadow-inner border border-primary/20 break-all text-center">
                     {generatedToken?.token || activeToken?.token}
                   </code>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap justify-center gap-2 md:gap-3">
                     <button
                       onClick={copyTokenToClipboard}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-3 font-medium transition ${
+                      className={`flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium transition ${
                         tokenCopied 
                           ? 'bg-green-600 text-white' 
                           : 'bg-muted/50 text-foreground hover:bg-muted'
                       }`}
                     >
-                      <Copy size={18} />
+                      <Copy size={14} />
                       {tokenCopied ? 'Copiado!' : 'Copiar'}
                     </button>
                     <button
                       onClick={sendToWhatsApp}
-                      className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-3 font-medium text-white transition hover:bg-green-700"
+                      className="flex items-center gap-1.5 md:gap-2 rounded-lg md:rounded-xl bg-green-600 px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium text-white transition hover:bg-green-700"
                     >
-                      <MessageCircle size={18} />
-                      Enviar WhatsApp
+                      <MessageCircle size={14} />
+                      WhatsApp
                     </button>
                   </div>
                 </div>
 
                 {/* Informações do Token */}
-                <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock size={16} />
-                    <span>Válido até: <strong className="text-foreground">{formatDate((generatedToken || activeToken)!.expiresAt)}</strong></span>
+                <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 text-[10px] md:text-sm">
+                  <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+                    <Clock size={12} />
+                    <span>Válido: <strong className="text-foreground">{formatDate((generatedToken || activeToken)!.expiresAt)}</strong></span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span>Dias restantes: <strong className={`${
+                  <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+                    <span>Dias: <strong className={`${
                       (generatedToken || activeToken)!.daysUntilExpiration < 7 ? 'text-yellow-600' : 'text-green-600'
                     }`}>{(generatedToken || activeToken)!.daysUntilExpiration}</strong></span>
                   </div>
-                  {(generatedToken || activeToken)!.lastUsedAt && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span>Último uso: <strong className="text-foreground">{formatDate((generatedToken || activeToken)!.lastUsedAt!)}</strong></span>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             )}
 
             {/* Botões de Ação */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               <button
                 onClick={generateAccessToken}
                 disabled={generatingToken}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg md:rounded-xl bg-primary px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {generatingToken ? (
                   <>
-                    <RefreshCw className="animate-spin" size={18} />
+                    <RefreshCw className="animate-spin" size={16} />
                     Gerando...
                   </>
                 ) : (
                   <>
-                    <Key size={18} />
-                    {activeToken ? 'Gerar Novo Token' : 'Gerar Token de Acesso'}
+                    <Key size={16} />
+                    {activeToken ? 'Novo Token' : 'Gerar Token'}
                   </>
                 )}
               </button>
@@ -399,17 +394,17 @@ Bons estudos!`;
               {activeToken && !activeToken.expired && (
                 <button
                   onClick={() => revokeAccessToken(activeToken.id)}
-                  className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-medium text-red-500 transition hover:bg-red-500/20"
+                  className="flex items-center gap-2 rounded-lg md:rounded-xl border border-red-500/30 bg-red-500/10 px-3 md:px-4 py-2.5 md:py-3 text-sm font-medium text-red-500 transition hover:bg-red-500/20"
                 >
-                  <Trash2 size={18} />
-                  Revogar
+                  <Trash2 size={16} />
+                  <span className="hidden sm:inline">Revogar</span>
                 </button>
               )}
             </div>
 
             {activeToken && !generatedToken && (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                ⚠️ Ao gerar um novo token, o anterior será automaticamente revogado
+              <p className="mt-3 text-center text-[10px] md:text-xs text-muted-foreground">
+                ⚠️ Ao gerar um novo token, o anterior será revogado
               </p>
             )}
 
@@ -417,10 +412,10 @@ Bons estudos!`;
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30"
+                className="mt-3 md:mt-4 p-3 md:p-4 rounded-lg md:rounded-xl bg-green-500/10 border border-green-500/30"
               >
-                <p className="text-center text-sm text-green-600">
-                  ✅ Token salvo com sucesso! Envie ao aluno para acesso ao AWS Study.
+                <p className="text-center text-xs md:text-sm text-green-600">
+                  ✅ Token salvo! Envie ao aluno para acesso ao AWS Study.
                 </p>
               </motion.div>
             )}
@@ -429,17 +424,16 @@ Bons estudos!`;
 
         {/* Informações sobre o Token */}
         {!foundLead && (
-          <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-start gap-3">
-              <Shield className="text-primary mt-0.5" size={20} />
+          <div className="mt-4 md:mt-6 rounded-lg md:rounded-xl border border-primary/20 bg-primary/5 p-3 md:p-4">
+            <div className="flex items-start gap-2 md:gap-3">
+              <Shield className="text-primary mt-0.5 shrink-0" size={18} />
               <div>
-                <h4 className="font-semibold text-foreground mb-1">Como funciona o Token AWS Study</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>• O token é único e vinculado ao aluno</li>
-                  <li>• Formato: XXXX-XXXXXX-XXXX (alfanumérico)</li>
-                  <li>• Validade de 90 dias após geração</li>
-                  <li>• Ao gerar novo token, o anterior é revogado automaticamente</li>
-                  <li>• O aluno usa o token para acessar a área AWS Study</li>
+                <h4 className="text-sm md:text-base font-semibold text-foreground mb-1">Como funciona o Token</h4>
+                <ul className="space-y-0.5 md:space-y-1 text-[10px] md:text-sm text-muted-foreground">
+                  <li>• Token único vinculado ao aluno</li>
+                  <li>• Formato: XXXX-XXXXXX-XXXX</li>
+                  <li>• Validade de 90 dias</li>
+                  <li>• Novo token revoga o anterior</li>
                 </ul>
               </div>
             </div>

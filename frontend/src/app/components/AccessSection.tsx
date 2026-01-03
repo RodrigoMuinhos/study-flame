@@ -428,37 +428,38 @@ Bem-vindo(a) à jornada!`
 
       {/* Seção de Gerador de Credenciais */}
       {importedLeads.length > 0 && (
-        <div className="mb-8 rounded-2xl bg-card p-6 border border-border shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="mb-8 rounded-xl md:rounded-2xl bg-card p-4 md:p-6 border border-border shadow-lg">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <Shield className="text-primary" size={22} />
+              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Shield className="text-primary" size={20} />
               </div>
-              <h3 className="text-xl font-bold text-foreground">
+              <h3 className="text-lg md:text-xl font-bold text-foreground">
                 Gerador de Credenciais ({importedLeads.length} leads)
               </h3>
             </div>
             <div className="flex items-center gap-2">
               <label
                 htmlFor="import-students-json"
-                className={`flex cursor-pointer items-center rounded-xl bg-primary p-2.5 text-primary-foreground shadow-md transition hover:bg-primary/90 ${
+                className={`flex cursor-pointer items-center rounded-xl bg-primary p-2 md:p-2.5 text-primary-foreground shadow-md transition hover:bg-primary/90 ${
                   importing ? 'cursor-not-allowed opacity-50' : ''
                 }`}
                 title={importing ? 'Importando...' : 'Importar JSON'}
               >
-                <Upload size={20} />
+                <Upload size={18} />
               </label>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="rounded-xl bg-primary p-2.5 text-primary-foreground shadow-md transition hover:bg-primary/90"
+                className="rounded-xl bg-primary p-2 md:p-2.5 text-primary-foreground shadow-md transition hover:bg-primary/90"
                 title="Adicionar Lead"
               >
-                <Plus size={20} />
+                <Plus size={18} />
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop: Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted text-left">
@@ -629,6 +630,123 @@ Bem-vindo(a) à jornada!`
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile: Card View */}
+          <div className="md:hidden space-y-3">
+            {loadingLeads || loadingCredentials ? (
+              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            ) : (
+              importedLeads.map((lead) => {
+                const cred = credentials.find(c => c.leadId === lead.id);
+                const isGenerating = generatingFor === lead.id;
+                
+                return (
+                  <motion.div
+                    key={lead.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-border bg-background p-4 space-y-3"
+                    onClick={() => cred && setSelectedStudent(cred)}
+                  >
+                    {/* Header: Nome e Status */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate">{lead.name}</p>
+                          {cred && (
+                            <span className={`w-2 h-2 rounded-full ${cred.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+                      </div>
+                      {cred ? (
+                        <div className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-500/20 px-2 py-0.5">
+                          <CheckCircle size={12} className="text-green-600" />
+                          <span className="text-[10px] font-medium text-green-600">OK</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-500/20 px-2 py-0.5">
+                          <XCircle size={12} className="text-yellow-600" />
+                          <span className="text-[10px] font-medium text-yellow-600">Pendente</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CPF e Senha */}
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex-1">
+                        <span className="text-[10px] text-muted-foreground uppercase">CPF</span>
+                        <code className="block text-xs font-mono text-foreground">{lead.cpf}</code>
+                      </div>
+                      {cred && (
+                        <div className="flex-1">
+                          <span className="text-[10px] text-muted-foreground uppercase">Senha</span>
+                          <div className="flex items-center gap-1">
+                            <code className="text-xs font-mono text-primary font-semibold">
+                              {visiblePasswordsCred[cred.id] ? cred.password : '••••••'}
+                            </code>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVisiblePasswordsCred({
+                                  ...visiblePasswordsCred,
+                                  [cred.id]: !visiblePasswordsCred[cred.id]
+                                });
+                              }}
+                              className="text-muted-foreground"
+                            >
+                              {visiblePasswordsCred[cred.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-border">
+                      {cred ? (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyCredentials(cred); }}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card py-2 text-xs text-muted-foreground hover:text-foreground transition"
+                          >
+                            <Copy size={14} />
+                            Copiar
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); sendWhatsApp(cred); }}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-500 py-2 text-xs text-white transition hover:bg-green-600"
+                          >
+                            <Smartphone size={14} />
+                            WhatsApp
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleAccess(cred.id); }}
+                            className={`rounded-lg p-2 transition ${
+                              cred.isActive
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-green-100 text-green-600'
+                            }`}
+                          >
+                            {cred.isActive ? <Lock size={16} /> : <CheckCircle size={16} />}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); generateCredentials(lead.id); }}
+                          disabled={isGenerating}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm text-primary-foreground font-medium transition hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          <Key size={16} />
+                          {isGenerating ? 'Gerando...' : 'Gerar Credenciais'}
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

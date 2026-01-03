@@ -9,7 +9,7 @@ import { AdminDashboard } from "./components/AdminDashboard";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 // Constantes de sessão
-const SESSION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos em milissegundos
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos em milissegundos
 const SESSION_KEY = 'crm_flame_session';
 const LAST_ACTIVITY_KEY = 'crm_flame_last_activity';
 
@@ -23,6 +23,7 @@ interface SessionData {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState<"aluno" | "admin">("aluno");
   const [studentName, setStudentName] = useState("");
@@ -40,28 +41,39 @@ export default function App() {
       const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
       
       if (sessionStr && lastActivity) {
-        const session: SessionData = JSON.parse(sessionStr);
-        const lastActivityTime = parseInt(lastActivity, 10);
-        const now = Date.now();
-        
-        // Verifica se a sessão expirou (mais de 10 minutos sem atividade)
-        if (now - lastActivityTime > SESSION_TIMEOUT_MS) {
-          // Sessão expirada - limpar e forçar novo login
+        try {
+          const session: SessionData = JSON.parse(sessionStr);
+          const lastActivityTime = parseInt(lastActivity, 10);
+          const now = Date.now();
+          
+          // Verifica se a sessão expirou (mais de 30 minutos sem atividade)
+          if (now - lastActivityTime > SESSION_TIMEOUT_MS) {
+            // Sessão expirada - limpar e forçar novo login
+            localStorage.removeItem(SESSION_KEY);
+            localStorage.removeItem(LAST_ACTIVITY_KEY);
+            setIsLoggedIn(false);
+            setSessionChecked(true);
+            return;
+          }
+          
+          // Sessão válida - restaurar
+          setIsLoggedIn(session.isLoggedIn);
+          setUserType(session.userType);
+          setStudentName(session.studentName);
+          setStudentCpf(session.studentCpf || '');
+          
+          // Atualizar última atividade
+          localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+          
+          // Pular splash screen quando já há sessão válida
+          setSplashDone(true);
+        } catch (e) {
+          console.error('Erro ao restaurar sessão:', e);
           localStorage.removeItem(SESSION_KEY);
           localStorage.removeItem(LAST_ACTIVITY_KEY);
-          setIsLoggedIn(false);
-          return;
         }
-        
-        // Sessão válida - restaurar
-        setIsLoggedIn(session.isLoggedIn);
-        setUserType(session.userType);
-        setStudentName(session.studentName);
-        setStudentCpf(session.studentCpf || '');
-        
-        // Atualizar última atividade
-        localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
       }
+      setSessionChecked(true);
     };
     
     checkSession();
@@ -194,6 +206,26 @@ export default function App() {
     setLoginError("");
     setUserType("aluno");
   };
+
+  // Aguardar verificação da sessão antes de renderizar
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-pulse">
+          <svg width="60" height="60" viewBox="0 0 180 180" fill="none">
+            <defs>
+              <linearGradient id="flameGradientLoading" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FF6B35" />
+                <stop offset="50%" stopColor="#F7931E" />
+                <stop offset="100%" stopColor="#FFC837" />
+              </linearGradient>
+            </defs>
+            <path d="M90 20C70 40 60 60 60 85C60 110 72 130 90 130C108 130 120 110 120 85C120 60 110 40 90 20Z" fill="url(#flameGradientLoading)" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
 
   // Se está logado como aluno
   if (isLoggedIn && userType === "aluno") {

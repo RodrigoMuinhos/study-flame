@@ -10,15 +10,47 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "./components/ui/toast";
 import { Loader } from "lucide-react";
 
+const ADMIN_SESSION_KEY = 'admin_session';
+
 export default function App() {
   const [userType, setUserType] = useState<"aluno" | "admin">("aluno");
   const [adminLoggedIn, setAdminLoggedIn] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminError, setAdminError] = useState("");
   
   const { student, isLoading, isAuthenticated, logout, login: loginContext } = useAuth();
   const { addToast } = useToast();
+
+  // Verificar sessão admin ao carregar
+  useEffect(() => {
+    const checkAdminSession = () => {
+      const adminSession = localStorage.getItem(ADMIN_SESSION_KEY);
+      const adminToken = localStorage.getItem('admin_token');
+      
+      if (adminSession && adminToken) {
+        try {
+          const session = JSON.parse(adminSession);
+          const now = Date.now();
+          // Sessão válida por 30 minutos
+          if (now - session.loginTime < 30 * 60 * 1000) {
+            setAdminLoggedIn(true);
+            setUserType("admin");
+          } else {
+            // Sessão expirada
+            localStorage.removeItem(ADMIN_SESSION_KEY);
+            localStorage.removeItem('admin_token');
+          }
+        } catch (e) {
+          console.error('Erro ao restaurar sessão admin:', e);
+        }
+      }
+      setAdminChecked(true);
+    };
+    
+    checkAdminSession();
+  }, []);
 
   // Login de admin via API
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -29,6 +61,13 @@ export default function App() {
       const response = await adminService.login(adminEmail, adminPassword);
       
       if (response.accessToken) {
+        // Salvar sessão admin
+        const adminSession = {
+          loginTime: Date.now(),
+          adminName: response.admin?.name || 'Admin'
+        };
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
+        
         setAdminLoggedIn(true);
         setUserType("admin");
         addToast({
@@ -47,6 +86,10 @@ export default function App() {
 
   const handleAdminLogout = () => {
     adminService.logout();
+    // Limpar sessão admin do localStorage
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    localStorage.removeItem('admin_token');
+    
     setAdminLoggedIn(false);
     setUserType("aluno");
     setAdminEmail("");
@@ -88,13 +131,8 @@ export default function App() {
     }
   };
 
-  // Admin deve autenticar a cada sessão: não restaurar login automaticamente
-  useEffect(() => {
-    // sem auto-login para admin
-  }, []);
-
-  // Se está carregando autenticação
-  if (isLoading) {
+  // Se está carregando autenticação (aluno ou admin)
+  if (isLoading || !adminChecked) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#070A12] via-[#0A0F1F] to-[#070A12]">
         <motion.div
@@ -107,14 +145,14 @@ export default function App() {
     );
   }
 
-  // Se está logado como aluno (via AuthContext)
-  if (isAuthenticated && student && userType === "aluno") {
-    return <StudentDashboard studentName={student.name} onLogout={handleStudentLogout} />;
-  }
-
-  // Se está logado como admin
+  // Se está logado como admin (verificar primeiro pois admin tem prioridade)
   if (adminLoggedIn && userType === "admin") {
     return <AdminDashboard onLogout={handleAdminLogout} />;
+  }
+
+  // Se está logado como aluno (via AuthContext)
+  if (isAuthenticated && student) {
+    return <StudentDashboard studentName={student.name} onLogout={handleStudentLogout} />;
   }
 
   // Tela de Login

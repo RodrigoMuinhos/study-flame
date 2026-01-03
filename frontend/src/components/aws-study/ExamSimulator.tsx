@@ -125,16 +125,16 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
 
   // Navegador de questões (mini barra com números)
   const QuestionNavigator = () => (
-    <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+    <div className="bg-white rounded-xl shadow-lg p-3 md:p-4 mb-4 md:mb-6">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-gray-700">
+        <span className="text-xs md:text-sm font-semibold text-gray-700">
           Navegação das Questões
         </span>
-        <span className="text-sm text-gray-600">
+        <span className="text-xs md:text-sm text-gray-600">
           {Object.keys(answers).length} de {shuffledQuestions.length} respondidas
         </span>
       </div>
-      <div className="grid grid-cols-10 gap-2">
+      <div className="grid grid-cols-5 md:grid-cols-10 gap-1.5 md:gap-2">
         {shuffledQuestions.map((q, index) => {
           const isAnswered = answers[q.id] !== undefined;
           const isCurrent = index === currentQuestionIndex;
@@ -143,7 +143,7 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
             <button
               key={q.id}
               onClick={() => setCurrentQuestionIndex(index)}
-              className={`w-10 h-10 rounded-lg font-semibold text-sm transition-all ${
+              className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-semibold text-xs md:text-sm transition-all ${
                 isCurrent
                   ? 'bg-orange-600 text-white scale-110 shadow-lg'
                   : isAnswered
@@ -160,14 +160,14 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 py-4 md:py-8 px-2 md:px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header com Timer */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 md:mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Simulado AWS SAA-C03</h1>
-              <p className="text-gray-600">
+              <h1 className="text-xl md:text-3xl font-bold text-gray-900">Simulado AWS SAA-C03</h1>
+              <p className="text-sm md:text-base text-gray-600">
                 Questão {currentQuestionIndex + 1} de {shuffledQuestions.length}
               </p>
             </div>
@@ -190,11 +190,11 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
         </div>
 
         {/* Botões de navegação */}
-        <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col-reverse md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 mb-8">
           <button
             onClick={handlePreviousQuestion}
             disabled={currentQuestionIndex === 0}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-gray-900 rounded-lg font-medium transition-all disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-4 md:px-6 py-3 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-gray-900 rounded-lg font-medium transition-all disabled:cursor-not-allowed"
           >
             <ChevronLeft size={20} />
             Anterior
@@ -204,7 +204,7 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
             {currentQuestionIndex === shuffledQuestions.length - 1 ? (
               <button
                 onClick={finishExam}
-                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 md:px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 <Flag size={20} />
                 Finalizar Prova
@@ -212,7 +212,7 @@ export function ExamSimulator({ questions, timerMinutes, onFinish }: ExamSimulat
             ) : (
               <button
                 onClick={handleNextQuestion}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all"
               >
                 Próxima
                 <ChevronRight size={20} />

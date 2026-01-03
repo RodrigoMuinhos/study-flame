@@ -897,41 +897,41 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
       </div>
 
       {/* Cards de Ação Rápida */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-3">
         <div 
           onClick={() => {
             const event = new CustomEvent('navigate-to-aulas');
             window.dispatchEvent(event);
           }}
-          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+          className="group cursor-pointer rounded-xl md:rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-4 md:p-6 shadow-sm transition hover:scale-105 hover:shadow-lg active:scale-95"
         >
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <BookOpen className="text-primary" size={24} />
+          <div className="mb-2 md:mb-3 inline-flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <BookOpen className="text-primary" size={20} />
           </div>
-          <h3 className="mb-2 text-lg font-bold text-foreground">Aulas</h3>
-          <p className="text-sm text-muted-foreground">Assista videoaulas e aprenda no seu ritmo</p>
+          <h3 className="mb-1 md:mb-2 text-base md:text-lg font-bold text-foreground">Aulas</h3>
+          <p className="text-xs md:text-sm text-muted-foreground">Assista videoaulas e aprenda no seu ritmo</p>
         </div>
 
         <div 
           onClick={() => alert('Desafios em breve! 🎯')}
-          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+          className="group cursor-pointer rounded-xl md:rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-4 md:p-6 shadow-sm transition hover:scale-105 hover:shadow-lg active:scale-95"
         >
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Target className="text-primary" size={24} />
+          <div className="mb-2 md:mb-3 inline-flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Target className="text-primary" size={20} />
           </div>
-          <h3 className="mb-2 text-lg font-bold text-foreground">Desafios</h3>
-          <p className="text-sm text-muted-foreground">Pratique com exercícios reais</p>
+          <h3 className="mb-1 md:mb-2 text-base md:text-lg font-bold text-foreground">Desafios</h3>
+          <p className="text-xs md:text-sm text-muted-foreground">Pratique com exercícios reais</p>
         </div>
 
         <div 
           onClick={() => alert('Conquistas em breve! 🏆')}
-          className="group cursor-pointer rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-6 shadow-sm transition hover:scale-105 hover:shadow-lg"
+          className="group cursor-pointer rounded-xl md:rounded-2xl border border-primary/30 bg-gradient-to-br from-card to-card p-4 md:p-6 shadow-sm transition hover:scale-105 hover:shadow-lg active:scale-95"
         >
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Trophy className="text-primary" size={24} />
+          <div className="mb-2 md:mb-3 inline-flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Trophy className="text-primary" size={20} />
           </div>
-          <h3 className="mb-2 text-lg font-bold text-foreground">Conquistas</h3>
-          <p className="text-sm text-muted-foreground">Acompanhe seu progresso e badges</p>
+          <h3 className="mb-1 md:mb-2 text-base md:text-lg font-bold text-foreground">Conquistas</h3>
+          <p className="text-xs md:text-sm text-muted-foreground">Acompanhe seu progresso e badges</p>
         </div>
       </div>
 

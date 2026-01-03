@@ -32,14 +32,14 @@ export function ExamQuestionCard({
   const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
   
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+    <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 lg:p-8">
       {/* Número da questão */}
-      <div className="mb-4">
-        <span className="text-sm font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+      <div className="mb-3 md:mb-4 flex flex-wrap gap-2">
+        <span className="text-xs md:text-sm font-semibold text-orange-600 bg-orange-50 px-2 md:px-3 py-1 rounded-full">
           Questão {questionNumber}
         </span>
         {question.difficulty && (
-          <span className={`ml-2 text-xs font-semibold px-3 py-1 rounded-full ${
+          <span className={`text-[10px] md:text-xs font-semibold px-2 md:px-3 py-1 rounded-full ${
             question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
             question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
             'bg-red-100 text-red-700'
@@ -51,12 +51,12 @@ export function ExamQuestionCard({
       </div>
 
       {/* Enunciado */}
-      <h2 className="text-xl md:text-2xl text-gray-900 mb-6 leading-relaxed">
+      <h2 className="text-base md:text-xl lg:text-2xl text-gray-900 mb-4 md:mb-6 leading-relaxed">
         {question.question}
       </h2>
 
       {/* Alternativas */}
-      <div className="space-y-3">
+      <div className="space-y-2 md:space-y-3">
         {question.options
           .filter(opt => opt && opt.trim() !== '')
           .slice(0, 4)
@@ -90,12 +90,12 @@ export function ExamQuestionCard({
               key={optionLabel}
               onClick={() => !showResults && onAnswerSelect(optionLabel)}
               disabled={showResults}
-              className={`w-full text-left border-2 ${borderColor} ${bgColor} ${textColor} rounded-lg p-4 transition-all ${
-                !showResults ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+              className={`w-full text-left border-2 ${borderColor} ${bgColor} ${textColor} rounded-lg p-3 md:p-4 transition-all ${
+                !showResults ? 'cursor-pointer hover:shadow-md active:scale-[0.99]' : 'cursor-default'
               }`}
             >
-              <div className="flex items-start gap-3">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+              <div className="flex items-start gap-2 md:gap-3">
+                <div className={`flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm ${
                   showResults && isCorrect 
                     ? 'bg-green-600 text-white' 
                     : showResults && isSelected && !isCorrect
@@ -106,7 +106,7 @@ export function ExamQuestionCard({
                 }`}>
                   {optionLabel}
                 </div>
-                <p className="flex-1 leading-relaxed pt-1">{optionText}</p>
+                <p className="flex-1 leading-relaxed text-sm md:text-base pt-0.5 md:pt-1">{optionText}</p>
               </div>
             </button>
           );

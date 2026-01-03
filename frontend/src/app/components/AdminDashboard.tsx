@@ -99,6 +99,7 @@ type AdminSection = "dashboard" | "students" | "invites" | "videos" | "awsquest"
 
 export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Para mobile
   const [currentSection, setCurrentSection] = useState<AdminSection>("dashboard");
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -567,14 +568,115 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const totalVideos = videos.length;
   const publishedVideos = videos.filter(v => v.isPublished).length;
 
+  // Função para navegar e fechar sidebar mobile
+  const handleNavigation = (section: AdminSection) => {
+    setCurrentSection(section);
+    setSidebarOpen(false); // Fechar sidebar no mobile
+  };
+
+  // Conteúdo do menu (reutilizado em desktop e mobile)
+  const MenuContent = ({ collapsed = false }: { collapsed?: boolean }) => (
+    <>
+      <SidebarButton icon={<Home size={20} />} label="Dashboard" active={currentSection === "dashboard"} onClick={() => handleNavigation("dashboard")} collapsed={collapsed} />
+      <SidebarButton icon={<Users size={20} />} label="Alunos" active={currentSection === "students"} onClick={() => handleNavigation("students")} collapsed={collapsed} />
+      <SidebarButton icon={<UserPlus size={20} />} label="Convites" active={currentSection === "invites"} onClick={() => handleNavigation("invites")} collapsed={collapsed} />
+      <SidebarButton icon={<Video size={20} />} label="Vídeos & Aulas" active={currentSection === "videos"} onClick={() => handleNavigation("videos")} collapsed={collapsed} />
+      <SidebarButton icon={<MessageSquare size={20} />} label="Mensagens" active={currentSection === "messages"} onClick={() => handleNavigation("messages")} collapsed={collapsed} />
+      <SidebarButton icon={<Lock size={20} />} label="Controle de Acesso" active={currentSection === "access"} onClick={() => handleNavigation("access")} collapsed={collapsed} />
+      <SidebarButton icon={<Cloud size={20} />} label="Token AWS Study" active={currentSection === "awstoken"} onClick={() => handleNavigation("awstoken")} collapsed={collapsed} />
+      <SidebarButton icon={<Settings size={20} />} label="Configurações" active={currentSection === "settings"} onClick={() => handleNavigation("settings")} collapsed={collapsed} />
+      <SidebarButton icon={<Wrench size={20} />} label="Manutenção" active={currentSection === "maintenance"} onClick={() => handleNavigation("maintenance")} collapsed={collapsed} />
+    </>
+  );
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      {/* Sidebar */}
+      {/* Mobile Header */}
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between border-b border-border bg-background/95 backdrop-blur-sm p-3 md:hidden">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+        >
+          <Menu size={20} />
+        </button>
+        <h1 className="font-bold text-foreground text-sm">Boot Camp FLAME</h1>
+        <button
+          onClick={onLogout}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border"
+          title="Sair"
+        >
+          <LogOut size={18} />
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 z-50 bg-black/50 md:hidden"
+            />
+            {/* Mobile Sidebar */}
+            <motion.aside
+              initial={{ x: -288 }}
+              animate={{ x: 0 }}
+              exit={{ x: -288 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 z-50 w-72 border-r border-border bg-background md:hidden"
+            >
+              <div className="flex h-full flex-col">
+                {/* Logo Mobile */}
+                <div className="border-b border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+                        <svg width="24" height="24" viewBox="0 0 180 180" fill="none">
+                          <path d="M90 20C70 40 60 60 60 85C60 110 72 130 90 130C108 130 120 110 120 85C120 60 110 40 90 20Z" fill="white" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h1 className="font-bold text-foreground text-sm">Boot Camp FLAME</h1>
+                        <p className="text-xs text-muted-foreground/70">Admin</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground hover:text-foreground">
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Menu Mobile */}
+                <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
+                  <MenuContent collapsed={false} />
+                </nav>
+
+                {/* Logout Mobile */}
+                <div className="border-t border-border p-4">
+                  <button
+                    onClick={() => { setSidebarOpen(false); onLogout(); }}
+                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-foreground/70 transition hover:bg-muted hover:text-foreground"
+                  >
+                    <LogOut size={20} />
+                    <span>Sair do Painel</span>
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
       <motion.aside 
         initial={false}
         animate={{ width: sidebarCollapsed ? 80 : 288 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="border-r border-border bg-background/70 backdrop-blur-sm flex-shrink-0 overflow-hidden"
+        className="hidden md:block border-r border-border bg-background/70 backdrop-blur-sm flex-shrink-0 overflow-hidden"
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
@@ -607,79 +709,9 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             </div>
           </div>
 
-          {/* Menu */}
+          {/* Menu Desktop */}
           <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-            <SidebarButton
-              icon={<Home size={20} />}
-              label="Dashboard"
-              active={currentSection === "dashboard"}
-              onClick={() => setCurrentSection("dashboard")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Users size={20} />}
-              label="Alunos"
-              active={currentSection === "students"}
-              onClick={() => setCurrentSection("students")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<UserPlus size={20} />}
-              label="Convites"
-              active={currentSection === "invites"}
-              onClick={() => setCurrentSection("invites")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Video size={20} />}
-              label="Vídeos & Aulas"
-              active={currentSection === "videos"}
-              onClick={() => setCurrentSection("videos")}
-              collapsed={sidebarCollapsed}
-            />
-            {/* AWS-Quest removido - agora usamos banco de dados via API */}
-            {/* <SidebarButton
-              icon={<Award size={20} />}
-              label="AWS-Quest"
-              active={currentSection === "awsquest"}
-              onClick={() => setCurrentSection("awsquest")}
-              collapsed={sidebarCollapsed}
-            /> */}
-            <SidebarButton
-              icon={<MessageSquare size={20} />}
-              label="Mensagens"
-              active={currentSection === "messages"}
-              onClick={() => setCurrentSection("messages")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Lock size={20} />}
-              label="Controle de Acesso"
-              active={currentSection === "access"}
-              onClick={() => setCurrentSection("access")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Cloud size={20} />}
-              label="Token AWS Study"
-              active={currentSection === "awstoken"}
-              onClick={() => setCurrentSection("awstoken")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Settings size={20} />}
-              label="Configurações"
-              active={currentSection === "settings"}
-              onClick={() => setCurrentSection("settings")}
-              collapsed={sidebarCollapsed}
-            />
-            <SidebarButton
-              icon={<Wrench size={20} />}
-              label="Manutenção"
-              active={currentSection === "maintenance"}
-              onClick={() => setCurrentSection("maintenance")}
-              collapsed={sidebarCollapsed}
-            />
+            <MenuContent collapsed={sidebarCollapsed} />
           </nav>
 
           {/* Logout */}
@@ -708,7 +740,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
         <AnimatePresence mode="wait">
           {currentSection === "dashboard" && (
             <DashboardSection
@@ -1221,18 +1253,18 @@ function DashboardSection({ totalStudents, avgProgress, activeToday, avgStreak, 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8 flex items-start justify-between">
+      <div className="mb-6 md:mb-8 flex items-start justify-between">
         <div>
-        <h1 className="mb-2 font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do Bootcamp FLAME</p>
+        <h1 className="mb-1 md:mb-2 text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Visão geral do Bootcamp FLAME</p>
         </div>
         <NotificationCenter />
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 md:mb-8 grid gap-3 md:gap-6 grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<Users className="text-primary" size={24} />}
           title="Total de Alunos"
@@ -1260,7 +1292,7 @@ function DashboardSection({ totalStudents, avgProgress, activeToday, avgStreak, 
       </div>
 
       {/* Cards Secundários */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:gap-6 grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={<CheckCircle className="text-green-600" size={24} />}
           title="Acessos Ativos"
@@ -1290,28 +1322,74 @@ function StudentsSection({ students, onAddStudent }: { students: Student[]; onAd
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Users size={24} className="text-primary" />
+          <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Users size={20} className="text-primary md:hidden" />
+            <Users size={24} className="text-primary hidden md:block" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Gerenciar Alunos</h1>
-            <p className="text-muted-foreground">Lista completa de alunos cadastrados</p>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Gerenciar Alunos</h1>
+            <p className="text-sm text-muted-foreground">Lista completa de alunos cadastrados</p>
           </div>
         </div>
         <button 
           onClick={onAddStudent}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground shadow-md transition hover:bg-primary/90"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground shadow-md transition hover:bg-primary/90 w-full sm:w-auto"
         >
           <Plus size={18} />
           Adicionar Aluno
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+      {/* Mobile: Cards view */}
+      <div className="md:hidden space-y-3">
+        {students.map((student, index) => (
+          <motion.div
+            key={student.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03 }}
+            className="rounded-xl border border-border bg-card p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground truncate">{student.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{student.email}</p>
+              </div>
+              {student.accessEnabled ? (
+                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-1 rounded-full">
+                  <CheckCircle size={12} />
+                  Ativo
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-red-500 bg-red-500/10 px-2 py-1 rounded-full">
+                  <XCircle size={12} />
+                  Bloqueado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-1 h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-primary" style={{ width: `${student.progress}%` }} />
+              </div>
+              <span className="text-xs font-medium text-primary">{student.progress}%</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-2 py-1 text-primary font-medium">{student.phase}</span>
+              <div className="flex items-center gap-1">
+                <Clock size={12} />
+                {student.lastAccess}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Desktop: Table view */}
+      <div className="hidden md:block overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -1407,49 +1485,56 @@ function InvitesSection({ invites }: { invites: Invite[] }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8">
-        <h1 className="mb-2 font-bold text-foreground">Convites</h1>
-        <p className="text-muted-foreground">Lista de convites enviados</p>
+      <div className="mb-6 md:mb-8 flex items-center gap-3">
+        <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+          <UserPlus size={20} className="text-primary md:hidden" />
+          <UserPlus size={24} className="text-primary hidden md:block" />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Convites</h1>
+          <p className="text-sm text-muted-foreground">Lista de convites enviados</p>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {invites.map((invite) => (
           <motion.div
             key={invite.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between rounded-xl border border-border bg-card p-6 shadow-sm"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 md:p-6 shadow-sm"
           >
-            <div className="flex items-center gap-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className={`flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full shrink-0 ${
                 invite.status === "accepted" ? "bg-green-500/20" : "bg-red-500/20"
               }`}>
                 {invite.status === "accepted" ? (
-                  <CheckCircle className="text-green-600" size={24} />
+                  <CheckCircle className="text-green-600" size={20} />
                 ) : (
-                  <XCircle className="text-red-500" size={24} />
+                  <XCircle className="text-red-500" size={20} />
                 )}
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">{invite.name}</h3>
-                <p className="text-sm text-muted-foreground">{invite.email} • {invite.cpf}</p>
+              <div className="min-w-0">
+                <h3 className="text-sm md:text-base font-semibold text-foreground truncate">{invite.name}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">{invite.email}</p>
+                <p className="text-xs text-muted-foreground md:hidden">{invite.cpf}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Status:</span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 border-t border-border sm:border-0 pt-2 sm:pt-0">
+              <span className="text-[10px] md:text-xs text-muted-foreground">Status:</span>
               <span
-                className={`text-sm font-medium ${
+                className={`text-xs md:text-sm font-medium px-2 py-0.5 rounded-full ${
                   invite.status === "accepted"
-                    ? "text-green-600"
+                    ? "text-green-600 bg-green-500/10"
                     : invite.status === "pending"
-                    ? "text-yellow-600"
-                    : "text-red-500"
+                    ? "text-yellow-600 bg-yellow-500/10"
+                    : "text-red-500 bg-red-500/10"
                 }`}
               >
-                {invite.status}
+                {invite.status === "accepted" ? "Aceito" : invite.status === "pending" ? "Pendente" : "Expirado"}
               </span>
             </div>
           </motion.div>
@@ -1470,66 +1555,76 @@ function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="mb-2 font-bold text-foreground">Gerenciar Vídeos & Aulas</h1>
-          <p className="text-muted-foreground">Administre o conteúdo do YouTube</p>
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Video size={20} className="text-primary md:hidden" />
+            <Video size={24} className="text-primary hidden md:block" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Gerenciar Vídeos</h1>
+            <p className="text-sm text-muted-foreground">Administre o conteúdo do YouTube</p>
+          </div>
         </div>
         <button
           onClick={onAddVideo}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground shadow-md transition hover:bg-primary/90 w-full sm:w-auto"
         >
           <Plus size={18} />
           Adicionar Vídeo
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {videos.map((video) => (
           <motion.div
             key={video.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border bg-card p-6 shadow-sm"
+            className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2 md:px-3 py-1 text-[10px] md:text-xs font-medium text-primary">
                     {video.module}
                   </span>
                   {video.isPublished ? (
-                    <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
-                      <CheckCircle size={12} />
+                    <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 md:px-3 py-1 text-[10px] md:text-xs font-medium text-green-600">
+                      <CheckCircle size={10} className="md:hidden" />
+                      <CheckCircle size={12} className="hidden md:block" />
                       Publicado
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-600">
-                      <Clock size={12} />
+                    <span className="flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 md:px-3 py-1 text-[10px] md:text-xs font-medium text-yellow-600">
+                      <Clock size={10} className="md:hidden" />
+                      <Clock size={12} className="hidden md:block" />
                       Rascunho
                     </span>
                   )}
                 </div>
-                <h3 className="mb-2 font-semibold text-foreground">{video.title}</h3>
-                <div className="mb-3 flex items-center gap-4 text-muted-foreground">
+                <h3 className="mb-2 text-sm md:text-base font-semibold text-foreground truncate">{video.title}</h3>
+                <div className="mb-2 md:mb-3 flex flex-wrap items-center gap-3 md:gap-4 text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <Play size={14} />
-                    <span className="text-sm">{video.duration}</span>
+                    <Play size={12} className="md:hidden" />
+                    <Play size={14} className="hidden md:block" />
+                    <span className="text-xs md:text-sm">{video.duration}</span>
                   </div>
-                  <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
-                    <Eye size={14} />
+                  <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs md:text-sm text-primary hover:underline">
+                    <Eye size={12} className="md:hidden" />
+                    <Eye size={14} className="hidden md:block" />
                     Ver no YouTube
                   </a>
                 </div>
-                <p className="text-sm text-muted-foreground/70">{video.youtubeUrl}</p>
+                <p className="hidden md:block text-sm text-muted-foreground/70 truncate">{video.youtubeUrl}</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 border-t border-border md:border-0 pt-3 md:pt-0">
                 <button
                   onClick={() => onTogglePublish(video.id)}
-                  className={`rounded-lg px-4 py-2 font-medium transition ${
+                  className={`flex-1 md:flex-none rounded-lg px-3 md:px-4 py-2 text-xs md:text-sm font-medium transition ${
                     video.isPublished
                       ? "border border-yellow-500/30 bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"
                       : "border border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20"
@@ -1538,14 +1633,16 @@ function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: {
                   {video.isPublished ? "Despublicar" : "Publicar"}
                 </button>
                 <button className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
-                  <Edit size={18} />
+                  <Edit size={16} className="md:hidden" />
+                  <Edit size={18} className="hidden md:block" />
                 </button>
                 <button 
                   onClick={() => onDeleteVideo(video.id)}
                   className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-red-600 transition hover:bg-red-500/20"
                   title="Deletar vídeo"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={16} className="md:hidden" />
+                  <Trash2 size={18} className="hidden md:block" />
                 </button>
               </div>
             </div>
@@ -1812,30 +1909,36 @@ function MessagesSection({ messages, onSendMessage }: { messages: Message[]; onS
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="mb-2 font-bold text-foreground">Mensagens</h1>
-          <p className="text-muted-foreground">Comunique-se com os alunos</p>
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+            <MessageSquare size={20} className="text-primary md:hidden" />
+            <MessageSquare size={24} className="text-primary hidden md:block" />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Mensagens</h1>
+            <p className="text-sm text-muted-foreground">Comunique-se com os alunos</p>
+          </div>
         </div>
         <button
           onClick={onSendMessage}
-          className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground shadow-md transition hover:bg-primary/90 w-full sm:w-auto"
         >
           <Send size={18} />
           Nova Mensagem
         </button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
         {messages.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">
-            <MessageSquare className="mx-auto mb-3" size={48} />
-            <p>Nenhuma mensagem enviada ainda</p>
+          <div className="py-8 md:py-12 text-center text-muted-foreground">
+            <MessageSquare className="mx-auto mb-3" size={40} />
+            <p className="text-sm md:text-base">Nenhuma mensagem enviada ainda</p>
             <button
               onClick={onSendMessage}
-              className="mt-4 text-primary hover:underline"
+              className="mt-4 text-sm text-primary hover:underline"
             >
               Enviar primeira mensagem
             </button>
@@ -1843,14 +1946,14 @@ function MessagesSection({ messages, onSendMessage }: { messages: Message[]; onS
         ) : (
           <div className="space-y-3">
             {messages.map((msg) => (
-              <div key={msg.id} className="rounded-xl border border-border bg-muted/30 p-4">
-                <div className="mb-2 flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground">{msg.title}</h3>
-                  <span className="text-xs text-muted-foreground">{msg.createdAt}</span>
+              <div key={msg.id} className="rounded-lg md:rounded-xl border border-border bg-muted/30 p-3 md:p-4">
+                <div className="mb-2 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                  <h3 className="text-sm md:text-base font-semibold text-foreground">{msg.title}</h3>
+                  <span className="text-[10px] md:text-xs text-muted-foreground">{msg.createdAt}</span>
                 </div>
-                <p className="mb-2 text-muted-foreground">{msg.content}</p>
+                <p className="mb-2 text-xs md:text-sm text-muted-foreground">{msg.content}</p>
                 {msg.link && (
-                  <a href={msg.link} className="text-sm text-primary hover:underline">
+                  <a href={msg.link} className="text-xs md:text-sm text-primary hover:underline break-all">
                     {msg.link}
                   </a>
                 )}
@@ -1873,57 +1976,68 @@ function SettingsSection({ temas, temaSelecionado, aplicarTema }: {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8">
-        <h1 className="mb-2 font-bold text-foreground">Configurações</h1>
-        <p className="text-muted-foreground">Configure a plataforma</p>
+      <div className="mb-6 md:mb-8 flex items-center gap-3">
+        <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+          <Settings size={20} className="text-primary md:hidden" />
+          <Settings size={24} className="text-primary hidden md:block" />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Configurações</h1>
+          <p className="text-sm text-muted-foreground">Configure a plataforma</p>
+        </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Aparência */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 font-semibold text-foreground flex items-center gap-2">
-            <span className="text-2xl">🎨</span>
+        <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
+          <h3 className="mb-4 text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
+            <span className="text-xl md:text-2xl">🎨</span>
             Tema do Sistema
           </h3>
           
-          {/* Grid de Temas */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Grid de Temas - responsivo */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {temas.map((tema) => (
               <button
                 key={tema.id}
                 onClick={() => aplicarTema(tema.id)}
-                className={`group relative overflow-hidden rounded-xl border-2 p-4 text-center transition-all hover:scale-105 ${
+                className={`group relative overflow-hidden rounded-xl border-2 p-3 md:p-4 text-center transition-all hover:scale-105 ${
                   temaSelecionado === tema.id
                     ? 'border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20'
                     : 'border-border/50 hover:border-border'
                 }`}
               >
-                {/* Ícone grande */}
-                <div className="mb-2 text-4xl">{tema.icon}</div>
-                
-                {/* Paleta de cores */}
-                <div className="mb-3 flex justify-center gap-1.5">
-                  {tema.cores.map((cor, idx) => (
-                    <div
-                      key={idx}
-                      className="h-6 w-6 rounded-full shadow-md ring-1 ring-black/10"
-                      style={{ backgroundColor: cor }}
-                    />
-                  ))}
+                {/* Mobile: Layout horizontal, Desktop: Layout vertical */}
+                <div className="flex items-center gap-3 sm:flex-col sm:gap-0">
+                  {/* Ícone */}
+                  <div className="text-3xl sm:text-4xl sm:mb-2">{tema.icon}</div>
+                  
+                  <div className="flex-1 sm:flex-none text-left sm:text-center">
+                    {/* Nome do tema */}
+                    <p className="text-sm font-bold text-foreground sm:mb-1">{tema.nome}</p>
+                    
+                    {/* Paleta de cores */}
+                    <div className="flex gap-1 mt-1 sm:mt-0 sm:justify-center sm:mb-2">
+                      {tema.cores.map((cor, idx) => (
+                        <div
+                          key={idx}
+                          className="h-4 w-4 sm:h-6 sm:w-6 rounded-full shadow-md ring-1 ring-black/10"
+                          style={{ backgroundColor: cor }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Nome do tema */}
-                <p className="mb-1 text-sm font-bold text-foreground">{tema.nome}</p>
-                
-                {/* Descrição menor */}
-                <p className="text-[10px] leading-tight text-muted-foreground">{tema.descricao}</p>
+                {/* Descrição - apenas desktop */}
+                <p className="hidden sm:block text-[10px] leading-tight text-muted-foreground mt-2">{tema.descricao}</p>
                 
                 {/* Indicador ativo */}
                 {temaSelecionado === tema.id && (
-                  <div className="absolute right-2 top-2 rounded-full bg-primary p-1.5 shadow-lg">
-                    <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <div className="absolute right-2 top-2 rounded-full bg-primary p-1 sm:p-1.5 shadow-lg">
+                    <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -1940,51 +2054,51 @@ function SettingsSection({ temas, temaSelecionado, aplicarTema }: {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 font-semibold text-foreground">Configurações Gerais</h3>
+        <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
+          <h3 className="mb-4 text-sm md:text-base font-semibold text-foreground">Configurações Gerais</h3>
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-foreground">Nome do Bootcamp</label>
+              <label className="mb-2 block text-sm text-foreground">Nome do Bootcamp</label>
               <input
                 type="text"
                 defaultValue="Bootcamp FLAME"
-                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg md:rounded-xl border border-border bg-muted/30 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div>
-              <label className="mb-2 block text-foreground">Canal do YouTube</label>
+              <label className="mb-2 block text-sm text-foreground">Canal do YouTube</label>
               <input
                 type="text"
                 defaultValue="@Rodrigomuinhosdev"
-                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg md:rounded-xl border border-border bg-muted/30 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 font-semibold text-foreground">Credenciais de Administrador</h3>
+        <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
+          <h3 className="mb-4 text-sm md:text-base font-semibold text-foreground">Credenciais de Administrador</h3>
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-foreground">E-mail Admin</label>
+              <label className="mb-2 block text-sm text-foreground">E-mail Admin</label>
               <input
                 type="email"
                 placeholder="Digite o email do admin"
-                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg md:rounded-xl border border-border bg-muted/30 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div>
-              <label className="mb-2 block text-foreground">Alterar Senha</label>
+              <label className="mb-2 block text-sm text-foreground">Alterar Senha</label>
               <input
                 type="password"
                 placeholder="Nova senha"
-                className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg md:rounded-xl border border-border bg-muted/30 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
         </div>
 
-        <button className="w-full rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90">
+        <button className="w-full rounded-lg md:rounded-xl bg-primary px-6 py-2.5 md:py-3 text-sm md:text-base font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90">
           Salvar Configurações
         </button>
       </div>
@@ -1998,23 +2112,30 @@ function MaintenanceSection({ onExportData, onImportData }: { onExportData: () =
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-8"
+      className="p-4 md:p-8"
     >
-      <div className="mb-8">
-        <h1 className="mb-2 font-bold text-foreground">Manutenção da Plataforma</h1>
-        <p className="text-muted-foreground">Ferramentas de administração e backup</p>
+      <div className="mb-6 md:mb-8 flex items-center gap-3">
+        <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl bg-primary/10">
+          <Wrench size={20} className="text-primary md:hidden" />
+          <Wrench size={24} className="text-primary hidden md:block" />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Manutenção</h1>
+          <p className="text-sm text-muted-foreground">Ferramentas de backup e admin</p>
+        </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 font-semibold text-foreground">Backup e Restauração</h3>
+      <div className="space-y-4 md:space-y-6">
+        <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
+          <h3 className="mb-4 text-sm md:text-base font-semibold text-foreground">Backup e Restauração</h3>
           <div className="space-y-3">
             <button
               onClick={onExportData}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 py-3 font-medium text-foreground transition hover:bg-muted"
+              className="flex w-full items-center justify-center gap-2 rounded-lg md:rounded-xl border border-border bg-muted/30 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium text-foreground transition hover:bg-muted"
             >
-              <Upload size={18} />
-              Fazer Backup dos Dados
+              <Upload size={16} className="md:hidden" />
+              <Upload size={18} className="hidden md:block" />
+              Fazer Backup
             </button>
             <input
               type="file"
@@ -2025,31 +2146,33 @@ function MaintenanceSection({ onExportData, onImportData }: { onExportData: () =
             />
             <label
               htmlFor="import-data"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 py-3 font-medium text-foreground transition hover:bg-muted cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-lg md:rounded-xl border border-border bg-muted/30 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium text-foreground transition hover:bg-muted cursor-pointer"
             >
-              <Upload size={18} />
+              <Upload size={16} className="md:hidden" />
+              <Upload size={18} className="hidden md:block" />
               Restaurar Backup
             </label>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 font-semibold text-foreground">Limpeza de Dados</h3>
+        <div className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-6 shadow-sm">
+          <h3 className="mb-4 text-sm md:text-base font-semibold text-foreground">Limpeza de Dados</h3>
           <div className="space-y-3">
-            <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 py-3 font-medium text-foreground transition hover:bg-muted">
-              Limpar Cache do Sistema
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg md:rounded-xl border border-border bg-muted/30 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium text-foreground transition hover:bg-muted">
+              Limpar Cache
             </button>
-            <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3 font-medium text-red-500 transition hover:bg-red-500/20">
-              <Trash2 size={18} />
-              Limpar Mensagens Antigas
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg md:rounded-xl border border-red-500/30 bg-red-500/10 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium text-red-500 transition hover:bg-red-500/20">
+              <Trash2 size={16} className="md:hidden" />
+              <Trash2 size={18} className="hidden md:block" />
+              Limpar Mensagens
             </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-primary/30 bg-primary/10 p-6 shadow-sm">
-          <h3 className="mb-2 font-semibold text-primary">⚠️ Zona de Perigo</h3>
-          <p className="mb-4 text-sm text-muted-foreground">Ações irreversíveis que afetam toda a plataforma</p>
-          <button className="w-full rounded-xl border border-red-500/50 bg-red-500/20 px-6 py-3 font-semibold text-red-500 transition hover:bg-red-500/30">
+        <div className="rounded-xl md:rounded-2xl border border-primary/30 bg-primary/10 p-4 md:p-6 shadow-sm">
+          <h3 className="mb-2 text-sm md:text-base font-semibold text-primary">⚠️ Zona de Perigo</h3>
+          <p className="mb-4 text-xs md:text-sm text-muted-foreground">Ações irreversíveis que afetam toda a plataforma</p>
+          <button className="w-full rounded-lg md:rounded-xl border border-red-500/50 bg-red-500/20 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-semibold text-red-500 transition hover:bg-red-500/30">
             Resetar Todos os Dados
           </button>
         </div>
@@ -2060,11 +2183,11 @@ function MaintenanceSection({ onExportData, onImportData }: { onExportData: () =
 
 function StatCard({ icon, title, value, subtitle }: { icon: React.ReactNode; title: string; value: string; subtitle: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div className="mb-3">{icon}</div>
-      <h3 className="mb-1 text-muted-foreground">{title}</h3>
-      <p className="mb-1 font-bold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground">{subtitle}</p>
+    <div className="rounded-xl md:rounded-2xl border border-border bg-card p-3 md:p-6 shadow-sm">
+      <div className="mb-2 md:mb-3">{icon}</div>
+      <h3 className="mb-0.5 md:mb-1 text-xs md:text-sm text-muted-foreground">{title}</h3>
+      <p className="mb-0.5 md:mb-1 text-lg md:text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-[10px] md:text-xs text-muted-foreground truncate">{subtitle}</p>
     </div>
   );
 }
