@@ -13,6 +13,8 @@ import com.crmflame.api.model.VideoRating;
 public interface VideoRatingRepository extends JpaRepository<VideoRating, Long> {
     Optional<VideoRating> findByVideoLessonIdAndStudentCpf(Long videoLessonId, String studentCpf);
     List<VideoRating> findByVideoLessonId(Long videoLessonId);
+
+    void deleteByVideoLessonId(Long videoLessonId);
     
     @Query("SELECT AVG(vr.contentRating) FROM VideoRating vr WHERE vr.videoLesson.id = :videoLessonId")
     Double getAverageContentRating(Long videoLessonId);

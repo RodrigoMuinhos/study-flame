@@ -12,4 +12,6 @@ public interface VideoCommentRepository extends JpaRepository<VideoComment, Long
     List<VideoComment> findByVideoLessonIdOrderByCreatedAtDesc(Long videoLessonId);
     List<VideoComment> findByStudentCpf(String studentCpf);
     Long countByVideoLessonId(Long videoLessonId);
+
+    void deleteByVideoLessonId(Long videoLessonId);
 }

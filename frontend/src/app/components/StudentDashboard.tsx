@@ -583,7 +583,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   const studentData = {
     currentPhase: "Faísca",
     nextPhase: "Combustão",
-    progressPercent: 95,
+    progressPercent: 5,
     lessonsCompleted: courseProgress.lessonsCompleted,
     streak: 0,
     xp: 0,

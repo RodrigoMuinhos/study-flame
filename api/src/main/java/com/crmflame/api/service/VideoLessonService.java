@@ -10,7 +10,11 @@ import com.crmflame.api.dto.VideoLessonDTO;
 import com.crmflame.api.dto.VideoLessonRequestDTO;
 import com.crmflame.api.model.Notification;
 import com.crmflame.api.model.VideoLesson;
+import com.crmflame.api.repository.VideoCommentRepository;
+import com.crmflame.api.repository.VideoLikeRepository;
+import com.crmflame.api.repository.VideoRatingRepository;
 import com.crmflame.api.repository.VideoLessonRepository;
+import com.crmflame.api.repository.VideoWatchProgressRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +23,10 @@ import lombok.RequiredArgsConstructor;
 public class VideoLessonService {
 
     private final VideoLessonRepository videoLessonRepository;
+    private final VideoLikeRepository videoLikeRepository;
+    private final VideoCommentRepository videoCommentRepository;
+    private final VideoRatingRepository videoRatingRepository;
+    private final VideoWatchProgressRepository videoWatchProgressRepository;
     private final NotificationService notificationService;
 
     /**
@@ -182,6 +190,14 @@ public class VideoLessonService {
         if (!videoLessonRepository.existsById(id)) {
             throw new RuntimeException("Vídeo não encontrado");
         }
+
+        // Some databases may not have FK ON DELETE CASCADE configured.
+        // Delete interaction rows explicitly to avoid FK violations.
+        videoLikeRepository.deleteByVideoLessonId(id);
+        videoCommentRepository.deleteByVideoLessonId(id);
+        videoRatingRepository.deleteByVideoLessonId(id);
+        videoWatchProgressRepository.deleteByVideoLessonId(id);
+
         videoLessonRepository.deleteById(id);
     }
 

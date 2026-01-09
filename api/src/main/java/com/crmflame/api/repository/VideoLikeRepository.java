@@ -12,5 +12,6 @@ public interface VideoLikeRepository extends JpaRepository<VideoLike, Long> {
     Optional<VideoLike> findByVideoLessonIdAndStudentCpf(Long videoLessonId, String studentCpf);
     Long countByVideoLessonId(Long videoLessonId);
     void deleteByVideoLessonIdAndStudentCpf(Long videoLessonId, String studentCpf);
+    void deleteByVideoLessonId(Long videoLessonId);
     boolean existsByVideoLessonIdAndStudentCpf(Long videoLessonId, String studentCpf);
 }

@@ -14,4 +14,6 @@ public interface VideoWatchProgressRepository extends JpaRepository<VideoWatchPr
     List<VideoWatchProgress> findByStudentCpf(String studentCpf);
     List<VideoWatchProgress> findByStudentCpfAndCompleted(String studentCpf, Boolean completed);
     Long countByVideoLessonIdAndCompleted(Long videoLessonId, Boolean completed);
+
+    void deleteByVideoLessonId(Long videoLessonId);
 }
