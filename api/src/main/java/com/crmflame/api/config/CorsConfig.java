@@ -10,7 +10,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
-    @Value("${cors.allowed-origins:http://localhost:3000}")
+    // Railway is configured with env var CORS_ORIGINS; support it directly.
+    // Also keep compatibility with property cors.allowed-origins.
+    @Value("${CORS_ORIGINS:${cors.allowed-origins:http://localhost:3000}}")
     private String allowedOrigins;
 
     @Override
@@ -23,7 +25,7 @@ public class CorsConfig implements WebMvcConfigurer {
         boolean hasWildcard = Arrays.stream(origins).anyMatch("*"::equals);
 
         var registration = registry.addMapping("/**")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
             .allowCredentials(false)
                 .maxAge(3600);
