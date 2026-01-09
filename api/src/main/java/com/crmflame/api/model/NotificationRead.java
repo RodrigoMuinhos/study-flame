@@ -43,6 +43,9 @@ public class NotificationRead {
     @Column(nullable = false, updatable = false)
     private LocalDateTime readAt;
 
+    @Column(name = "dismissed_at")
+    private LocalDateTime dismissedAt;
+
     @PrePersist
     protected void onCreate() {
         readAt = LocalDateTime.now();

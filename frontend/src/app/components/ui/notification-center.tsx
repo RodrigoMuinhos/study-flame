@@ -169,6 +169,21 @@ export function NotificationCenter({ studentCpf }: { studentCpf?: string }) {
     }
   };
 
+  const handleDismiss = async (id: string) => {
+    if (!resolvedCpf) return;
+
+    // Remove imediatamente da lista
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await fetch(
+        `${API_BASE_URL}/students/me/notifications/${encodeURIComponent(id)}?cpf=${encodeURIComponent(resolvedCpf)}`,
+        { method: 'DELETE' }
+      );
+    } catch {
+      void loadNotifications();
+    }
+  };
+
   const handleOpenNotification = async (notification: Notification, e?: React.MouseEvent) => {
     if (e) {
       const target = e.target;
@@ -378,6 +393,17 @@ export function NotificationCenter({ studentCpf }: { studentCpf?: string }) {
                                     <CheckCheck className="h-3.5 w-3.5" />
                                   </button>
                                 )}
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleDismiss(notification.id);
+                                  }}
+                                  className="rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                  title="Excluir"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
                               </div>
                             </div>
                           </div>

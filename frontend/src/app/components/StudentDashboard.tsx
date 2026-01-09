@@ -581,9 +581,9 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   
   // Dados de progresso do aluno
   const studentData = {
-    currentPhase: courseProgress.currentPhase,
-    nextPhase: courseProgress.nextPhase,
-    progressPercent: courseProgress.progressPercent,
+    currentPhase: "Faísca",
+    nextPhase: "Combustão",
+    progressPercent: 95,
     lessonsCompleted: courseProgress.lessonsCompleted,
     streak: 0,
     xp: 0,

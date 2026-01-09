@@ -1,5 +1,6 @@
 package com.crmflame.api.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class NotificationService {
 
     private static final int DEFAULT_LIMIT = 50;
+    private static final int TTL_HOURS = 24;
 
     private final NotificationRepository notificationRepository;
     private final NotificationReadRepository notificationReadRepository;
@@ -31,8 +33,10 @@ public class NotificationService {
     public List<StudentNotificationDTO> listForStudent(String studentCpf, Integer limit) {
         int pageSize = (limit == null || limit < 1 || limit > 200) ? DEFAULT_LIMIT : limit;
 
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(TTL_HOURS);
+
         List<Notification> notifications = notificationRepository
-                .findAllByOrderByCreatedAtDesc(PageRequest.of(0, pageSize))
+            .findAllByCreatedAtAfterOrderByCreatedAtDesc(cutoff, PageRequest.of(0, pageSize))
                 .getContent();
 
         if (notifications.isEmpty()) {
@@ -40,15 +44,20 @@ public class NotificationService {
         }
 
         Set<Long> ids = notifications.stream().map(Notification::getId).collect(Collectors.toSet());
-        Map<Long, Boolean> readMap = new HashMap<>();
+        Map<Long, NotificationRead> readMap = new HashMap<>();
 
         notificationReadRepository
                 .findByStudentCpfAndNotificationIdIn(studentCpf, ids)
-                .forEach(r -> readMap.put(r.getNotification().getId(), true));
+                .forEach(r -> readMap.put(r.getNotification().getId(), r));
 
         List<StudentNotificationDTO> result = new ArrayList<>(notifications.size());
         for (Notification n : notifications) {
-            boolean read = Boolean.TRUE.equals(readMap.get(n.getId()));
+            NotificationRead readRow = readMap.get(n.getId());
+            if (readRow != null && readRow.getDismissedAt() != null) {
+                continue;
+            }
+
+            boolean read = readRow != null;
             result.add(StudentNotificationDTO.from(n, read));
         }
 
@@ -56,14 +65,30 @@ public class NotificationService {
     }
 
     public long unreadCount(String studentCpf) {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(TTL_HOURS);
+
         List<Notification> latest = notificationRepository
-                .findAllByOrderByCreatedAtDesc(PageRequest.of(0, DEFAULT_LIMIT))
+                .findAllByCreatedAtAfterOrderByCreatedAtDesc(cutoff, PageRequest.of(0, DEFAULT_LIMIT))
                 .getContent();
         if (latest.isEmpty()) return 0;
 
         Set<Long> ids = latest.stream().map(Notification::getId).collect(Collectors.toSet());
-        long read = notificationReadRepository.countByStudentCpfAndNotificationIdIn(studentCpf, ids);
-        return Math.max(0, latest.size() - read);
+        Map<Long, NotificationRead> readMap = new HashMap<>();
+        notificationReadRepository
+                .findByStudentCpfAndNotificationIdIn(studentCpf, ids)
+                .forEach(r -> readMap.put(r.getNotification().getId(), r));
+
+        long unread = 0;
+        for (Notification n : latest) {
+            NotificationRead r = readMap.get(n.getId());
+            if (r == null) {
+                unread++;
+                continue;
+            }
+            // se está dismiss (excluída), não conta como não-lida
+            // se está read, também não conta
+        }
+        return unread;
     }
 
     @Transactional
@@ -84,8 +109,10 @@ public class NotificationService {
 
     @Transactional
     public void markAllRead(String studentCpf) {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(TTL_HOURS);
+
         List<Notification> latest = notificationRepository
-                .findAllByOrderByCreatedAtDesc(PageRequest.of(0, DEFAULT_LIMIT))
+            .findAllByCreatedAtAfterOrderByCreatedAtDesc(cutoff, PageRequest.of(0, DEFAULT_LIMIT))
                 .getContent();
         if (latest.isEmpty()) return;
 
@@ -113,5 +140,29 @@ public class NotificationService {
         n.setMessage(message);
         n.setIcon(icon);
         return notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void dismiss(String studentCpf, Long notificationId) {
+        NotificationRead existing = notificationReadRepository
+                .findByStudentCpfAndNotificationId(studentCpf, notificationId)
+                .orElse(null);
+
+        if (existing != null) {
+            if (existing.getDismissedAt() == null) {
+                existing.setDismissedAt(LocalDateTime.now());
+                notificationReadRepository.save(existing);
+            }
+            return;
+        }
+
+        Notification n = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notificação não encontrada"));
+
+        NotificationRead read = new NotificationRead();
+        read.setNotification(n);
+        read.setStudentCpf(studentCpf);
+        read.setDismissedAt(LocalDateTime.now());
+        notificationReadRepository.save(read);
     }
 }

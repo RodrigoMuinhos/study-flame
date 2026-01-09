@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,6 +59,16 @@ public class StudentNotificationController {
             @RequestParam(value = "cpf", required = false) String cpfParam) {
         String cpf = resolveCpf(authHeader, cpfParam);
         notificationService.markAllRead(cpf);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<Void> dismiss(
+            @PathVariable Long notificationId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(value = "cpf", required = false) String cpfParam) {
+        String cpf = resolveCpf(authHeader, cpfParam);
+        notificationService.dismiss(cpf, notificationId);
         return ResponseEntity.noContent().build();
     }
 
