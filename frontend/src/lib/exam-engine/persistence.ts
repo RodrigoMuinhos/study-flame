@@ -143,8 +143,5 @@ export function getElapsedTime(state: ExamState): number {
  * Conta questões respondidas
  */
 export function getAnsweredCount(state: ExamState): number {
-  return state.blueprint
-    .map((_, index) => state.answers[index])
-    .filter(a => a !== null && a !== undefined)
-    .length;
+  return Object.values(state.answers).filter(a => a !== null).length;
 }

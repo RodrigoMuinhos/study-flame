@@ -118,6 +118,8 @@ export interface LevelInfo {
   current: number;
   xp: number;
   xpToNext: number;
+  xpCurrentLevelMin?: number;
+  xpCurrentLevelMax?: number;
   title: string;
 }
 

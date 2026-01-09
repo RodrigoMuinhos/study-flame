@@ -1,5 +1,7 @@
 package com.crmflame.api.config;
 
+import java.util.Arrays;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -13,12 +15,23 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        String[] origins = allowedOrigins.split(",");
-        registry.addMapping("/**")
-                .allowedOrigins(origins)
+        String[] origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toArray(String[]::new);
+
+        boolean hasWildcard = Arrays.stream(origins).anyMatch("*"::equals);
+
+        var registration = registry.addMapping("/**")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true)
+            .allowCredentials(false)
                 .maxAge(3600);
+
+        if (hasWildcard) {
+            registration.allowedOriginPatterns("*");
+        } else {
+            registration.allowedOrigins(origins);
+        }
     }
 }

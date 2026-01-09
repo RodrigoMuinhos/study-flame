@@ -9,29 +9,29 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 import com.crmflame.api.dto.GamificationDTO;
 import com.crmflame.api.dto.GamificationDTO.BadgeDTO;
 import com.crmflame.api.dto.GamificationDTO.LevelInfo;
 import com.crmflame.api.dto.GamificationDTO.Stats;
 import com.crmflame.api.model.Badge;
+import com.crmflame.api.model.GamificationLevel;
+import com.crmflame.api.model.GamificationXpRule;
 import com.crmflame.api.model.Lead;
 import com.crmflame.api.model.StudentBadge;
 import com.crmflame.api.model.StudentProgress;
 import com.crmflame.api.repository.BadgeRepository;
+import com.crmflame.api.repository.GamificationLevelRepository;
+import com.crmflame.api.repository.GamificationXpRuleRepository;
 import com.crmflame.api.repository.LeadRepository;
 import com.crmflame.api.repository.StudentBadgeRepository;
 import com.crmflame.api.repository.StudentProgressRepository;
 
-import jakarta.annotation.PostConstruct;
-
 @Service
 public class GamificationService {
-    
-    @PostConstruct
-    public void init() {
-        initializeDefaultBadges();
-    }
     
     @Autowired
     private StudentProgressRepository progressRepository;
@@ -44,21 +44,47 @@ public class GamificationService {
     
     @Autowired
     private LeadRepository leadRepository;
+
+    @Autowired
+    private GamificationLevelRepository levelRepository;
+
+    @Autowired
+    private GamificationXpRuleRepository xpRuleRepository;
     
-    // XP necessário para cada nível (fórmula: nível * 250)
-    private int getXpForLevel(int level) {
-        return level * 250;
+    private List<GamificationLevel> getLevelsOrdered() {
+        return levelRepository.findAllByOrderByLevelNumberAsc();
     }
-    
-    // Título baseado no nível
-    private String getLevelTitle(int level) {
-        if (level >= 50) return "Mestre FLAME";
-        if (level >= 40) return "Lenda do Código";
-        if (level >= 30) return "Expert";
-        if (level >= 20) return "Chama Ardente";
-        if (level >= 10) return "Chama Crescente";
-        if (level >= 5) return "Faísca Brilhante";
-        return "Iniciante";
+
+    private GamificationLevel getLevelForXp(int xpTotal) {
+        List<GamificationLevel> levels = getLevelsOrdered();
+        if (levels.isEmpty()) {
+            GamificationLevel fallback = new GamificationLevel();
+            fallback.setLevelNumber(1);
+            fallback.setTitle("Nível 1");
+            fallback.setMinXp(0);
+            fallback.setMaxXp(Integer.MAX_VALUE);
+            return fallback;
+        }
+
+        for (GamificationLevel level : levels) {
+            int min = safeInt(level.getMinXp());
+            int max = safeInt(level.getMaxXp());
+            if (xpTotal >= min && xpTotal < max) {
+                return level;
+            }
+        }
+
+        // acima do maior, assume último
+        return levels.get(levels.size() - 1);
+    }
+
+    private GamificationLevel getNextLevel(GamificationLevel current) {
+        if (current == null || current.getLevelNumber() == null) return null;
+        return levelRepository.findByLevelNumber(current.getLevelNumber() + 1).orElse(null);
+    }
+
+    private int safeInt(Integer v) {
+        return v == null ? 0 : v;
     }
     
     @Transactional
@@ -112,6 +138,7 @@ public class GamificationService {
         StudentProgress progress = new StudentProgress();
         progress.setLead(lead);
         progress.setXpTotal(0);
+        // nível é derivado do DB (gamification_levels)
         progress.setLevel(1);
         progress.setStreakDays(0);
         progress.setLessonsCompleted(0);
@@ -121,32 +148,13 @@ public class GamificationService {
         return progressRepository.save(progress);
     }
     
+    /**
+     * Badges padrão são provisionados via Flyway (DB), evitando hardcode em código.
+     * Este método fica por compatibilidade, mas não cria dados em runtime.
+     */
     @Transactional
     public void initializeDefaultBadges() {
-        if (badgeRepository.count() > 0) {
-            return; // Já existem badges
-        }
-        
-        // Criar badges padrão
-        createBadge("FIRST_LESSON", "Primeira Aula", "Complete sua primeira aula", "🎯", Badge.BadgeRarity.COMMON, 1, 50);
-        createBadge("MARATHONER", "Maratonista", "Assista 10 horas de aulas em uma semana", "🏃", Badge.BadgeRarity.RARE, 10, 100);
-        createBadge("PERFECTIONIST", "Perfeccionista", "Tire 100% em 5 exercícios consecutivos", "💯", Badge.BadgeRarity.EPIC, 5, 200);
-        createBadge("CODE_LEGEND", "Lenda do Código", "Complete 50 aulas avançadas", "👑", Badge.BadgeRarity.LEGENDARY, 50, 500);
-        createBadge("MENTOR", "Mentor", "Ajude 10 colegas na comunidade", "🎓", Badge.BadgeRarity.RARE, 10, 100);
-        createBadge("FIRE_STREAK", "Sequência de Fogo", "Mantenha uma sequência de 30 dias", "🔥", Badge.BadgeRarity.EPIC, 30, 300);
-    }
-    
-    private void createBadge(String code, String name, String description, String icon, Badge.BadgeRarity rarity, int maxProgress, int xpReward) {
-        Badge badge = new Badge();
-        badge.setCode(code);
-        badge.setName(name);
-        badge.setDescription(description);
-        badge.setIcon(icon);
-        badge.setRarity(rarity);
-        badge.setMaxProgress(maxProgress);
-        badge.setXpReward(xpReward);
-        badge.setIsActive(true);
-        badgeRepository.save(badge);
+        // no-op
     }
     
     private void initializeStudentBadges(Lead lead) {
@@ -166,12 +174,29 @@ public class GamificationService {
         GamificationDTO dto = new GamificationDTO();
         
         // Level info
-        int xpToNext = getXpForLevel(progress.getLevel() + 1);
+        int xpTotal = safeInt(progress.getXpTotal());
+        GamificationLevel currentLevel = getLevelForXp(xpTotal);
+        GamificationLevel nextLevel = getNextLevel(currentLevel);
+
+        int xpToNext = nextLevel != null ? safeInt(nextLevel.getMinXp()) : safeInt(currentLevel.getMaxXp());
+        String title = currentLevel.getTitle() != null ? currentLevel.getTitle() : ("Nível " + safeInt(currentLevel.getLevelNumber()));
+
+        int currentMinXp = safeInt(currentLevel.getMinXp());
+        int currentMaxXp = safeInt(currentLevel.getMaxXp());
+
+        // sincroniza nível persistido (coluna), mas derivado 100% do DB
+        if (progress.getLevel() == null || !progress.getLevel().equals(currentLevel.getLevelNumber())) {
+            progress.setLevel(currentLevel.getLevelNumber());
+            progressRepository.save(progress);
+        }
+
         LevelInfo levelInfo = new LevelInfo(
-            progress.getLevel(),
-            progress.getXpTotal(),
+            safeInt(currentLevel.getLevelNumber()),
+            xpTotal,
             xpToNext,
-            getLevelTitle(progress.getLevel())
+            currentMinXp,
+            currentMaxXp,
+            title
         );
         dto.setLevel(levelInfo);
         
@@ -206,7 +231,8 @@ public class GamificationService {
     
     private GamificationDTO getEmptyGamificationData() {
         GamificationDTO dto = new GamificationDTO();
-        dto.setLevel(new LevelInfo(1, 0, 250, "Iniciante"));
+        // fallback mínimo (quando não existe Lead). Níveis oficiais vêm do DB.
+        dto.setLevel(new LevelInfo(1, 0, 0, "Nível 1"));
         dto.setBadges(new ArrayList<>());
         Stats stats = new Stats();
         stats.setTotalBadges(0);
@@ -230,18 +256,37 @@ public class GamificationService {
         StudentProgress progress = progressRepository.findByLead(lead)
             .orElseGet(() -> createInitialProgress(lead));
         
-        progress.setXpTotal(progress.getXpTotal() + xpAmount);
-        
-        // Check for level up
-        while (progress.getXpTotal() >= getXpForLevel(progress.getLevel() + 1)) {
-            progress.setLevel(progress.getLevel() + 1);
-        }
+        int currentXp = safeInt(progress.getXpTotal());
+        progress.setXpTotal(currentXp + xpAmount);
+
+        // nível é recalculado a partir das faixas no DB
+        GamificationLevel newLevel = getLevelForXp(safeInt(progress.getXpTotal()));
+        progress.setLevel(safeInt(newLevel.getLevelNumber()));
         
         progress.setLastActivityDate(LocalDateTime.now());
         progressRepository.save(progress);
         
         List<StudentBadge> studentBadges = studentBadgeRepository.findByLead(lead);
         return buildGamificationDTO(progress, studentBadges);
+    }
+
+    @Transactional
+    public GamificationDTO addXpByAction(String cpf, String actionCode, int count) {
+        if (count <= 0) count = 1;
+
+        Optional<GamificationXpRule> ruleOpt = xpRuleRepository.findByActionCodeIgnoreCase(actionCode);
+        if (ruleOpt.isEmpty()) {
+            // Regra não existe: como a economia é 100% DB-driven, falhar ajuda a detectar config faltante
+            throw new ResponseStatusException(BAD_REQUEST, "XP rule not found for action_code=" + actionCode);
+        }
+
+        GamificationXpRule rule = ruleOpt.get();
+        if (rule.getIsActive() != null && !rule.getIsActive()) {
+            return getGamificationData(cpf);
+        }
+
+        int xpAmount = safeInt(rule.getXpAmount()) * count;
+        return addXp(cpf, xpAmount);
     }
     
     public List<Badge> getAllBadges() {

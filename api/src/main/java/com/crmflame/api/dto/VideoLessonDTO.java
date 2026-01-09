@@ -20,6 +20,7 @@ public class VideoLessonDTO {
     private Integer orderIndex;
     private Boolean isPublished;
     private String pageLocation;
+    private Integer xpReward;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

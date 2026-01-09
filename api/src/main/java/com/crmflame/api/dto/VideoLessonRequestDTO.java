@@ -37,4 +37,7 @@ public class VideoLessonRequestDTO {
     private Boolean isPublished = false;
 
     private String pageLocation = "aulas"; // inicio, trilha, aulas, desafios, materiais
+
+    // XP concedido quando o aluno conclui esta aula (definido no DB, não em código)
+    private int xpReward = 0;
 }

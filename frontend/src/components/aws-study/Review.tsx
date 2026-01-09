@@ -15,6 +15,13 @@ interface ErrorPattern {
   commonMistakes: string[];
 }
 
+interface ReviewQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
 export function Review({ onBack }: ReviewProps) {
   const { currentCertification } = useCertification();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -25,6 +32,7 @@ export function Review({ onBack }: ReviewProps) {
   const [reviewProgress, setReviewProgress] = useState<Record<string, number>>({});
 
   const stats = StatisticsManager.getStats();
+  const hasAnyAttempts = (stats.totalExams ?? 0) > 0 || (stats.totalQuestions ?? 0) > 0;
   
   // Analisar padrões de erro
   const getErrorPatterns = (): ErrorPattern[] => {
@@ -90,28 +98,40 @@ export function Review({ onBack }: ReviewProps) {
     setSelectedCategory(null);
   };
 
-  // Mock de questões (substituir com dados reais)
-  const getMockQuestions = (category: string) => {
-    return [
-      {
-        question: `Questão de revisão sobre ${category}. Você errou questões similares anteriormente.`,
-        options: [
-          'Opção A - Resposta incorreta comum',
-          'Opção B - Resposta correta',
-          'Opção C - Resposta incorreta',
-          'Opção D - Resposta incorreta'
-        ],
-        correctAnswer: 1,
-        explanation: 'Esta é a explicação detalhada da resposta correta.'
-      }
-    ];
+  const getReviewQuestions = (_category: string): ReviewQuestion[] => {
+    return [];
   };
 
   const totalErrorQuestions = errorPatterns.reduce((acc, pattern) => acc + pattern.errorCount, 0);
   const totalReviewedQuestions = Object.values(reviewProgress).reduce((acc, count) => acc + count, 0);
 
   if (showingQuestion && selectedCategory) {
-    const questions = getMockQuestions(selectedCategory);
+    const questions = getReviewQuestions(selectedCategory);
+
+    if (questions.length === 0) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-2xl text-center">
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="text-orange-600" size={48} />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Sem questões para revisão
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Ainda não existe um banco de questões de revisão baseado no seu histórico para <strong>{selectedCategory}</strong>.
+            </p>
+            <button
+              onClick={handleBackToCategories}
+              className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+            >
+              Voltar às Categorias
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const currentQuestion = questions[currentQuestionIndex];
 
     if (!currentQuestion) {
@@ -333,7 +353,24 @@ export function Review({ onBack }: ReviewProps) {
         </div>
 
         {/* Empty State */}
-        {errorPatterns.length === 0 && (
+        {errorPatterns.length === 0 && !hasAnyAttempts && (
+          <div className="bg-white rounded-2xl p-12 shadow-lg text-center">
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Target className="text-orange-600" size={48} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Comece fazendo um simulado
+            </h2>
+            <p className="text-gray-600 mb-2">
+              Você ainda não tem histórico suficiente para montar uma revisão inteligente.
+            </p>
+            <p className="text-gray-500 text-sm">
+              Faça pelo menos 1 simulado para o sistema identificar seus pontos fracos.
+            </p>
+          </div>
+        )}
+
+        {errorPatterns.length === 0 && hasAnyAttempts && (
           <div className="bg-white rounded-2xl p-12 shadow-lg text-center">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="text-green-600" size={48} />

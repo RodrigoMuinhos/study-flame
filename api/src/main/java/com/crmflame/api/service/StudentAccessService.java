@@ -1,19 +1,21 @@
 package com.crmflame.api.service;
 
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.crmflame.api.dto.StudentAccessDTO;
 import com.crmflame.api.model.Lead;
 import com.crmflame.api.model.StudentAccess;
 import com.crmflame.api.repository.LeadRepository;
 import com.crmflame.api.repository.StudentAccessRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.security.SecureRandom;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

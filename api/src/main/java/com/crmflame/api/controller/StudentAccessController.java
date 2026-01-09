@@ -20,7 +20,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/student-access")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3002"})
 @Tag(name = "Student Access", description = "Gerenciamento de credenciais de acesso dos alunos")
 public class StudentAccessController {
     

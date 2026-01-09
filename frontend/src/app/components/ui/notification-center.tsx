@@ -1,8 +1,11 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Bell, X, CheckCheck, Trash2, Settings } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Bell, X, CheckCheck } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
+import { createPortal } from "react-dom";
+import { API_BASE_URL } from "@/services/api/config";
 
 interface Notification {
   id: string;
@@ -14,56 +17,192 @@ interface Notification {
   icon?: string;
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({ studentCpf }: { studentCpf?: string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'achievement',
-      title: '🏆 Nova conquista desbloqueada!',
-      message: 'Você completou 5 cursos e ganhou o badge "Estudante Dedicado"',
-      timestamp: new Date(Date.now() - 1000 * 60 * 5),
-      read: false,
-      icon: '🏆'
-    },
-    {
-      id: '2',
-      type: 'info',
-      title: '📚 Novo conteúdo disponível',
-      message: 'O curso "React Avançado" teve uma nova aula adicionada',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      read: false,
-      icon: '📚'
-    },
-    {
-      id: '3',
-      type: 'success',
-      title: '✅ Tarefa concluída',
-      message: 'Você completou o exercício "Hooks Avançados" com 100% de acerto',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      read: true,
-      icon: '✅'
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [resolvedCpf, setResolvedCpf] = useState<string | undefined>(studentCpf);
+  const bellButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [panelPosition, setPanelPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (studentCpf?.trim()) {
+      setResolvedCpf(studentCpf.trim());
+      return;
     }
-  ]);
+
+    try {
+      const tryParse = (key: string): any => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      };
+
+      const fromStudentData = tryParse('student_data')?.cpf;
+      const fromUserData = tryParse('user_data')?.cpf;
+      const fromLegacySession = tryParse('crm_flame_session')?.studentCpf;
+      const fromStudentDataLegacy = tryParse('studentData')?.cpf;
+
+      const cpfCandidate =
+        (typeof fromStudentData === 'string' && fromStudentData) ||
+        (typeof fromUserData === 'string' && fromUserData) ||
+        (typeof fromLegacySession === 'string' && fromLegacySession) ||
+        (typeof fromStudentDataLegacy === 'string' && fromStudentDataLegacy) ||
+        undefined;
+
+      if (cpfCandidate) setResolvedCpf(cpfCandidate);
+    } catch {
+      // ignore
+    }
+  }, [studentCpf]);
+
+  const loadNotifications = async () => {
+    if (!resolvedCpf) {
+      setNotifications([]);
+      return;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/students/me/notifications?cpf=${encodeURIComponent(resolvedCpf)}`);
+    if (!res.ok) {
+      setNotifications([]);
+      return;
+    }
+
+    const data = (await res.json()) as Array<{
+      id: number;
+      type: string;
+      title: string;
+      message: string;
+      icon?: string;
+      createdAt: string;
+      read: boolean;
+    }>;
+
+    const normalized: Notification[] = data.map((n) => ({
+      id: String(n.id),
+      type: toUiType(n.type),
+      title: n.title,
+      message: n.message,
+      icon: n.icon,
+      timestamp: new Date(n.createdAt),
+      read: !!n.read,
+    }));
+
+    // UX: manter somente não lidas na lista.
+    // Assim, ao marcar como lida (ou clicar), ela desaparece.
+    setNotifications(normalized.filter((n) => !n.read));
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, 15000);
+    return () => window.clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedCpf]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
+  const updatePanelPosition = useCallback(() => {
+    const el = bellButtonRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const viewportW = window.innerWidth;
+    const padding = 8;
+    const panelWidth = 384; // Tailwind w-96 = 24rem
+
+    const top = rect.bottom + 8;
+    const minLeft = padding;
+    const maxLeft = Math.max(padding, viewportW - panelWidth - padding);
+    const left = Math.min(Math.max(rect.right - panelWidth, minLeft), maxLeft);
+
+    setPanelPosition({ top, left });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [isOpen, updatePanelPosition]);
+
+  const handleMarkAsRead = async (id: string) => {
+    if (!resolvedCpf) return;
+
+    // Remove imediatamente da lista
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await fetch(
+        `${API_BASE_URL}/students/me/notifications/${encodeURIComponent(id)}/read?cpf=${encodeURIComponent(resolvedCpf)}`,
+        { method: 'PATCH' }
+      );
+    } catch {
+      // Se falhar, recarrega do servidor
+      void loadNotifications();
+    }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const handleMarkAllAsRead = async () => {
+    if (!resolvedCpf) return;
 
-  const handleDelete = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const handleClearAll = () => {
+    // Remove imediatamente todas da lista
     setNotifications([]);
+    try {
+      await fetch(`${API_BASE_URL}/students/me/notifications/read-all?cpf=${encodeURIComponent(resolvedCpf)}`,
+        { method: 'POST' }
+      );
+    } catch {
+      void loadNotifications();
+    }
+  };
+
+  const handleOpenNotification = async (notification: Notification, e?: React.MouseEvent) => {
+    if (e) {
+      const target = e.target;
+      if (target instanceof Element && target.closest('button')) return;
+    }
+
+    if (!notification.read) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    // Try to navigate to the specific lesson if message contains module/lesson.
+    // Example: "(Módulo 0, Aula 1)"
+    try {
+      const match = notification.message.match(/M[oó]dulo\s*(\d+)\s*,\s*Aula\s*(\d+)/i);
+      if (match) {
+        const moduleNumber = Number(match[1]);
+        const lessonNumber = Number(match[2]);
+        if (!Number.isNaN(moduleNumber) && !Number.isNaN(lessonNumber)) {
+          localStorage.setItem('pending_lesson_nav', JSON.stringify({ moduleNumber, lessonNumber }));
+          window.dispatchEvent(new CustomEvent('navigate-to-lesson', { detail: { moduleNumber, lessonNumber } }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Always navigate to aulas page (even if parsing fails)
+    try {
+      window.dispatchEvent(new CustomEvent('navigate-to-aulas'));
+    } catch {
+      // ignore
+    }
+
+    setIsOpen(false);
   };
 
   const getTimeAgo = (date: Date) => {
@@ -88,10 +227,19 @@ export function NotificationCenter() {
     }
   };
 
+  const toUiType = (type: string): Notification['type'] => {
+    const t = (type || '').toUpperCase();
+    if (t === 'ACHIEVEMENT') return 'achievement';
+    if (t === 'SUCCESS') return 'success';
+    if (t === 'WARNING') return 'warning';
+    return 'info';
+  };
+
   return (
     <>
       {/* Botão do sino */}
       <button
+        ref={bellButtonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="relative rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
         aria-label="Notificações"
@@ -108,27 +256,33 @@ export function NotificationCenter() {
         )}
       </button>
 
-      {/* Painel de notificações */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 z-40"
-            />
+      {/* Painel de notificações (portal para evitar stacking/overflow do layout) */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {isOpen && (
+              <>
+                {/* Overlay */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsOpen(false)}
+                  className="fixed inset-0 z-[9998]"
+                />
 
-            {/* Painel */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              transition={{ type: "spring", damping: 25 }}
-              className="absolute right-0 top-12 z-50 w-96 rounded-2xl border border-border bg-card shadow-2xl"
-            >
+                {/* Painel */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                  transition={{ type: "spring", damping: 25 }}
+                  className="fixed z-[9999] w-96 max-w-[calc(100vw-1rem)] rounded-2xl border border-border bg-card shadow-2xl"
+                  style={{
+                    top: panelPosition?.top ?? 64,
+                    left: panelPosition?.left ?? 8,
+                  }}
+                >
               {/* Cabeçalho */}
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
@@ -140,7 +294,7 @@ export function NotificationCenter() {
                   )}
                 </div>
                 <div className="flex gap-1">
-                  {notifications.length > 0 && (
+                  {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}
                       className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
@@ -179,7 +333,8 @@ export function NotificationCenter() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className={`relative px-4 py-3 transition hover:bg-muted/50 ${
+                        onClick={(e) => void handleOpenNotification(notification, e)}
+                        className={`relative cursor-pointer px-4 py-3 transition hover:bg-muted/50 ${
                           !notification.read ? 'bg-muted/30' : ''
                         }`}
                       >
@@ -195,7 +350,7 @@ export function NotificationCenter() {
                               notification.type
                             )}`}
                           >
-                            <span className="text-xl">{notification.icon}</span>
+                            <span className="text-xl">{notification.icon || '🔔'}</span>
                           </div>
 
                           {/* Conteúdo */}
@@ -213,20 +368,16 @@ export function NotificationCenter() {
                               <div className="flex gap-1">
                                 {!notification.read && (
                                   <button
-                                    onClick={() => handleMarkAsRead(notification.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void handleMarkAsRead(notification.id);
+                                    }}
                                     className="rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                     title="Marcar como lida"
                                   >
                                     <CheckCheck className="h-3.5 w-3.5" />
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => handleDelete(notification.id)}
-                                  className="rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-red-500"
-                                  title="Excluir"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
                               </div>
                             </div>
                           </div>
@@ -237,28 +388,12 @@ export function NotificationCenter() {
                 )}
               </div>
 
-              {/* Rodapé */}
-              {notifications.length > 0 && (
-                <div className="border-t border-border px-4 py-2 flex gap-2">
-                  <button
-                    onClick={handleClearAll}
-                    className="flex-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  >
-                    <Trash2 className="inline h-3.5 w-3.5 mr-1" />
-                    Limpar tudo
-                  </button>
-                  <button
-                    className="flex-1 rounded-lg py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  >
-                    <Settings className="inline h-3.5 w-3.5 mr-1" />
-                    Configurar
-                  </button>
-                </div>
-              )}
             </motion.div>
-          </>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </>
   );
 }

@@ -72,10 +72,6 @@ export class StatisticsManager {
     stats.currentStreak = this.calculateStreak(stats.examHistory);
     stats.longestStreak = Math.max(stats.longestStreak, stats.currentStreak);
 
-    const xpGained = this.calculateXP(history);
-    stats.totalXP += xpGained;
-    stats.level = this.calculateLevel(stats.totalXP);
-
     stats.badges = this.checkBadges(stats);
 
     this.saveStats(stats);
@@ -132,48 +128,6 @@ export class StatisticsManager {
     return streak;
   }
 
-  private static calculateXP(history: ExamHistory): number {
-    let xp = 0;
-    
-    // XP APENAS para respostas corretas (2 XP por acerto)
-    xp += history.correctAnswers * 2;
-    
-    // Bônus PEQUENO por passar (somente se >= 72%)
-    const percentage = (history.correctAnswers / history.totalQuestions) * 100;
-    if (percentage >= 72 && history.passed) {
-      xp += 5;
-    }
-    
-    // Bônus MUITO PEQUENO para excelência
-    if (percentage >= 95) xp += 10;
-    else if (percentage >= 90) xp += 5;
-    
-    // Sem bônus de velocidade - encorajamos qualidade, não pressa
-    
-    return xp;
-  }
-
-  private static calculateLevel(totalXP: number): number {
-    // Progressão EXPONENCIAL muito mais lenta
-    // Nível 1: 0 XP
-    // Nível 2: 100 XP (50 acertos)
-    // Nível 3: 300 XP (150 acertos)
-    // Nível 4: 600 XP (300 acertos)
-    // Nível 5: 1000 XP (500 acertos)
-    // Nível 10: 4500 XP (2250 acertos)
-    // Nível 20: 19000 XP (9500 acertos)
-    
-    // Fórmula: level * level * 50
-    let level = 1;
-    let requiredXP = 0;
-    
-    while (totalXP >= requiredXP) {
-      level++;
-      requiredXP = level * level * 50;
-    }
-    
-    return level - 1;
-  }
 
   private static checkBadges(stats: UserStats): Badge[] {
     const badges = [...stats.badges];

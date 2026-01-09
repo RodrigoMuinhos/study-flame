@@ -21,50 +21,16 @@ type ExamQuestionDTO = {
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const;
 
-function normalizeCorrectAnswer(raw: string | undefined | null, optionTexts: string[]): string {
-  if (!raw) return 'A';
-  const trimmed = raw.trim();
-  const upper = trimmed.toUpperCase();
-
-  // Accept letters directly
-  if (OPTION_LABELS.includes(upper as typeof OPTION_LABELS[number])) {
-    return upper;
-  }
-
-  // Accept numeric 0-3
-  if (/^[0-3]$/.test(trimmed)) {
-    return OPTION_LABELS[Number(trimmed)];
-  }
-
-  // Accept matching option text
-  const idx = optionTexts.findIndex((text) => text.trim().toUpperCase() === upper);
-  if (idx >= 0 && idx < OPTION_LABELS.length) {
-    return OPTION_LABELS[idx];
-  }
-
-  // Fallback
-  return 'A';
-}
-
 function toExamQuestion(dto: ExamQuestionDTO): ExamQuestion {
-  // Remove valores nulos/undefined e limite a 4 opções
-  const optionTexts = (dto.options ?? [])
-    .filter((text): text is string => typeof text === 'string' && text.trim().length > 0)
-    .slice(0, 4);
-
-  const options = optionTexts.map((text, idx) => ({
-    label: OPTION_LABELS[idx] ?? String(idx + 1),
-    text,
-  }));
-
-  const correctAnswer = normalizeCorrectAnswer(dto.correctAnswer, optionTexts);
-
   return {
     id: dto.id,
     topic: dto.topic ?? dto.domain,
     question: dto.question,
-    options,
-    correctAnswer,
+    options: (dto.options ?? []).slice(0, 4).map((text, idx) => ({
+      label: OPTION_LABELS[idx] ?? String(idx + 1),
+      text,
+    })),
+    correctAnswer: dto.correctAnswer,
     explanation: dto.explanation,
   };
 }

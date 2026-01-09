@@ -13,6 +13,7 @@ import {
   scoreExam,
   filterResults,
   formatTimeDetailed,
+  type ExamState,
   type ExamResult,
   type ReviewFilter,
   type QuestionResult
@@ -25,6 +26,7 @@ interface Props {
 export default function ReviewPage({ params }: Props) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const [examState, setExamState] = useState<ExamState | null>(null);
   const [result, setResult] = useState<ExamResult | null>(null);
   const [filter, setFilter] = useState<ReviewFilter>('all');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -46,6 +48,7 @@ export default function ReviewPage({ params }: Props) {
         return;
       }
       
+      setExamState(state);
       const examResult = await scoreExam(state);
       setResult(examResult);
       setLoading(false);
@@ -171,7 +174,7 @@ export default function ReviewPage({ params }: Props) {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-bold text-slate-700">
               {(() => {
-                const kind = result.state?.settings?.kind;
+                const kind = examState?.settings?.kind;
                 if (kind === 'training') return '🎯 Treino';
                 if (kind === 'simulator') return '📝 Simulador';
                 return '🏆 Prova Oficial';
@@ -179,8 +182,8 @@ export default function ReviewPage({ params }: Props) {
             </span>
             <span className="text-xs text-slate-500">
               {(() => {
-                if (!result.state?.finishedAt) return '';
-                const date = new Date(result.state.finishedAt);
+                if (!examState?.finishedAt) return '';
+                const date = new Date(examState.finishedAt);
                 const day = String(date.getDate()).padStart(2, '0');
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = String(date.getFullYear()).slice(-2);

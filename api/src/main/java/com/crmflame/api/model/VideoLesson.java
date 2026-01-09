@@ -1,11 +1,18 @@
 package com.crmflame.api.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "video_lessons")
@@ -45,6 +52,9 @@ public class VideoLesson {
     @Column(nullable = false)
     private String pageLocation = "aulas"; // inicio, trilha, aulas, desafios, materiais
 
+    @Column(name = "xp_reward")
+    private Integer xpReward = 0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -60,5 +70,13 @@ public class VideoLesson {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public int getXpReward() {
+        return xpReward != null ? xpReward : 0;
+    }
+
+    public void setXpReward(int xpReward) {
+        this.xpReward = xpReward;
     }
 }

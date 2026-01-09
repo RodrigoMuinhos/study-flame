@@ -2,6 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Trophy, TrendingUp, Target, Award, Clock, Flame, BarChart3, Star } from 'lucide-react';
 import { StatisticsManager } from '@/utils/statisticsManager';
 import { UserStats } from '@/types/aws-study';
+import { useAWSStudy } from '@/contexts/AWSStudyContext';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+
+type GamificationLevelInfo = {
+  current: number;
+  xp: number;
+  xpToNext: number;
+  xpCurrentLevelMin?: number;
+  xpCurrentLevelMax?: number;
+  title: string;
+};
 
 interface StatsDashboardProps {
   onBack: () => void;
@@ -9,11 +21,24 @@ interface StatsDashboardProps {
 
 export function StatsDashboard({ onBack }: StatsDashboardProps) {
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [levelInfo, setLevelInfo] = useState<GamificationLevelInfo | null>(null);
+  const { userInfo } = useAWSStudy();
 
   useEffect(() => {
     const userStats = StatisticsManager.getStats();
     setStats(userStats);
   }, []);
+
+  useEffect(() => {
+    const cpf = userInfo?.cpf;
+    if (!cpf) return;
+    fetch(`${API_BASE_URL}/gamification/student/${cpf}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.level) setLevelInfo(data.level);
+      })
+      .catch(() => undefined);
+  }, [userInfo?.cpf]);
 
   if (!stats) {
     return <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex items-center justify-center">
@@ -26,13 +51,12 @@ export function StatsDashboard({ onBack }: StatsDashboardProps) {
   const unlockedBadges = stats.badges.filter(b => b.unlockedAt);
   const lockedBadges = stats.badges.filter(b => !b.unlockedAt);
 
-  // Calcular XP necessário para próximo nível usando mesma fórmula do StatisticsManager
-  const nextLevel = stats.level + 1;
-  const xpForNextLevel = nextLevel * nextLevel * 50;
-  const xpForCurrentLevel = stats.level * stats.level * 50;
-  const xpInCurrentLevel = stats.totalXP - xpForCurrentLevel;
-  const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
-  const xpProgress = Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100);
+  const currentMin = typeof levelInfo?.xpCurrentLevelMin === 'number' ? levelInfo!.xpCurrentLevelMin : 0;
+  const nextMin = typeof levelInfo?.xpToNext === 'number' ? levelInfo!.xpToNext : 0;
+  const denom = Math.max(1, nextMin - currentMin);
+  const xpProgress = nextMin > currentMin && typeof levelInfo?.xp === 'number'
+    ? Math.max(0, Math.min(100, ((levelInfo!.xp - currentMin) / denom) * 100))
+    : 0;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -98,8 +122,8 @@ export function StatsDashboard({ onBack }: StatsDashboardProps) {
               <Star size={32} />
               <span className="text-3xl">⭐</span>
             </div>
-            <div className="text-4xl font-bold mb-1">Nv. {stats.level}</div>
-            <div className="text-purple-100">{stats.totalXP} XP Total</div>
+            <div className="text-4xl font-bold mb-1">Nv. {levelInfo?.current ?? 1}</div>
+            <div className="text-purple-100">{levelInfo?.xp ?? 0} XP Total</div>
             <div className="mt-3 bg-purple-400 rounded-full h-2">
               <div
                 className="bg-white rounded-full h-2 transition-all"
@@ -107,7 +131,7 @@ export function StatsDashboard({ onBack }: StatsDashboardProps) {
               />
             </div>
             <div className="text-xs text-purple-100 mt-1">
-              {Math.round(xpProgress)}% para Nv. {stats.level + 1}
+              {Math.round(xpProgress)}% para Nv. {(levelInfo?.current ?? 1) + 1}
             </div>
           </div>
         </div>

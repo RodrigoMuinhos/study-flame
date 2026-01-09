@@ -3,6 +3,7 @@ import "./globals.css";
 import { ToastProvider } from "./components/ui/toast";
 import { CookieBanner } from "./components/ui/cookie-banner";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WhatsNew } from "./components/ui/whats-new";
 
 export const metadata: Metadata = {
   title: "CRM Flame - Sistema de Gestão de Leads",
@@ -20,6 +21,7 @@ export default function RootLayout({
         <AuthProvider>
           <ToastProvider>
             {children}
+            <WhatsNew />
             <CookieBanner />
           </ToastProvider>
         </AuthProvider>

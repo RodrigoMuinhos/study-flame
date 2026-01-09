@@ -12,6 +12,8 @@ public class GamificationDTO {
         private Integer current;
         private Integer xp;
         private Integer xpToNext;
+        private Integer xpCurrentLevelMin;
+        private Integer xpCurrentLevelMax;
         private String title;
         
         public LevelInfo() {}
@@ -20,6 +22,15 @@ public class GamificationDTO {
             this.current = current;
             this.xp = xp;
             this.xpToNext = xpToNext;
+            this.title = title;
+        }
+
+        public LevelInfo(Integer current, Integer xp, Integer xpToNext, Integer xpCurrentLevelMin, Integer xpCurrentLevelMax, String title) {
+            this.current = current;
+            this.xp = xp;
+            this.xpToNext = xpToNext;
+            this.xpCurrentLevelMin = xpCurrentLevelMin;
+            this.xpCurrentLevelMax = xpCurrentLevelMax;
             this.title = title;
         }
         
@@ -31,6 +42,12 @@ public class GamificationDTO {
         
         public Integer getXpToNext() { return xpToNext; }
         public void setXpToNext(Integer xpToNext) { this.xpToNext = xpToNext; }
+
+        public Integer getXpCurrentLevelMin() { return xpCurrentLevelMin; }
+        public void setXpCurrentLevelMin(Integer xpCurrentLevelMin) { this.xpCurrentLevelMin = xpCurrentLevelMin; }
+
+        public Integer getXpCurrentLevelMax() { return xpCurrentLevelMax; }
+        public void setXpCurrentLevelMax(Integer xpCurrentLevelMax) { this.xpCurrentLevelMax = xpCurrentLevelMax; }
         
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }

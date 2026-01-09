@@ -1,5 +1,12 @@
 package com.crmflame.api.service;
 
+import com.crmflame.api.dto.ExamQuestionDTO;
+import com.crmflame.api.model.ExamQuestion;
+import com.crmflame.api.repository.ExamQuestionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,20 +15,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.crmflame.api.dto.ExamQuestionDTO;
-import com.crmflame.api.model.ExamQuestion;
-import com.crmflame.api.repository.ExamQuestionRepository;
-
 @Service
 public class ExamQuestionService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(ExamQuestionService.class);
     
     @Autowired
     private ExamQuestionRepository repository;
@@ -81,25 +76,15 @@ public class ExamQuestionService {
     ) {
         int size = (count == null || count <= 0) ? 65 : Math.min(count, 200);
         String effectiveStatus = (status == null || status.isBlank()) ? "ACTIVE" : status;
-        String effectiveTopic = isBlankToNull(topic);
-        String effectiveDomain = isBlankToNull(domain);
-        String effectiveDifficulty = isBlankToNull(difficulty);
-        
-        logger.info("🔍 Filtering questions - status: {}, topic: {}, domain: {}, difficulty: {}, multipleChoice: {}, count: {}",
-            effectiveStatus, effectiveTopic, effectiveDomain, effectiveDifficulty, multipleChoice, size);
 
-        List<ExamQuestion> results = repository.findRandomFiltered(
+        return repository.findRandomFiltered(
                 effectiveStatus,
-                effectiveTopic,
-                effectiveDomain,
-                effectiveDifficulty,
+                isBlankToNull(topic),
+                isBlankToNull(domain),
+                isBlankToNull(difficulty),
                 multipleChoice,
                 org.springframework.data.domain.PageRequest.of(0, size)
-            );
-        
-        logger.info("✅ Found {} questions", results.size());
-        
-        return results.stream()
+            ).stream()
             .map(this::convertToDTO)
             .collect(Collectors.toList());
     }

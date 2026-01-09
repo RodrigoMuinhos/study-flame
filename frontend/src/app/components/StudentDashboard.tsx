@@ -40,9 +40,51 @@ import { useToast } from "./ui/toast";
 import { PrivacyPortal } from "./ui/privacy-portal";
 import { GamificationPanel } from "./ui/gamification-panel";
 import { EmptyState } from "./ui/empty-state";
+import { StatisticsManager } from "@/utils/statisticsManager";
 
 // API Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
+const TOTAL_MODULES = 13;
+
+type PublishedVideoLesson = {
+  id: number;
+  moduleNumber: number;
+  lessonNumber: number;
+  pageLocation?: string;
+};
+
+type CourseProgress = {
+  progressPercent: number;
+  modulesCompleted: number;
+  lessonsCompleted: number;
+  totalLessons: number;
+  currentPhase: string;
+  nextPhase: string;
+};
+
+type ModuleProgress = {
+  completed: number;
+  total: number;
+  percent: number;
+  done: boolean;
+};
+
+const PHASES = ["Faísca", "Combustão", "Chama", "Forja", "Incêndio"] as const;
+
+const phaseFromProgressPercent = (progressPercent: number): string => {
+  if (progressPercent <= 0) return "Faísca";
+  const idx = Math.min(PHASES.length - 1, Math.floor((progressPercent - 1) / 20));
+  return PHASES[idx];
+};
+
+const nextPhaseFromProgressPercent = (progressPercent: number): string => {
+  if (progressPercent <= 0) return PHASES[1] ?? PHASES[0];
+  const current = phaseFromProgressPercent(progressPercent);
+  const idx = PHASES.indexOf(current as any);
+  if (idx === -1) return PHASES[0];
+  return PHASES[Math.min(PHASES.length - 1, idx + 1)];
+};
 
 // Helper para converter URL do YouTube para embed
 const convertYoutubeUrl = (url: string): string => {
@@ -68,43 +110,60 @@ const convertYoutubeUrl = (url: string): string => {
 
 // Helper para buscar vídeo de BOAS-VINDAS (pageLocation = "inicio", module=0, lesson=0)
 // Esse vídeo deve ser gerenciado via Admin (tabela video_lessons no Neon)
-const getWelcomeVideoUrl = async (): Promise<string | null> => {
+type VideoLessonApiResponse = {
+  id?: number;
+  pageLocation?: string;
+  youtubeUrl?: string;
+};
+
+type LoadedVideoMeta = {
+  videoId: number | null;
+  embedUrl: string | null;
+};
+
+const getWelcomeVideoMeta = async (): Promise<LoadedVideoMeta> => {
   try {
     const response = await fetch(`${API_BASE_URL}/videos/module/0/lesson/0`);
 
     if (response.ok) {
-      const video = await response.json();
+      const video: VideoLessonApiResponse = await response.json();
 
       if (video.pageLocation === 'inicio' && video.youtubeUrl) {
-        return convertYoutubeUrl(video.youtubeUrl);
+        return {
+          videoId: typeof video.id === 'number' ? video.id : null,
+          embedUrl: convertYoutubeUrl(video.youtubeUrl)
+        };
       }
     }
   } catch (e) {
     console.error('Erro ao buscar vídeo de boas-vindas:', e);
   }
 
-  return null;
+  return { videoId: null, embedUrl: null };
 };
 
 // Helper para buscar vídeo de AULA (pageLocation = "aulas")
-const getLessonVideoUrl = async (modulo: number | string, id: number | string): Promise<string | null> => {
+const getLessonVideoMeta = async (modulo: number | string, id: number | string): Promise<LoadedVideoMeta> => {
   try {
     // Buscar vídeo específico da aula
     const response = await fetch(`${API_BASE_URL}/videos/module/${modulo}/lesson/${id}`);
     
     if (response.ok) {
-      const video = await response.json();
+      const video: VideoLessonApiResponse = await response.json();
       
       // Verificar se é realmente um vídeo de aula
       if (video.pageLocation === 'aulas' && video.youtubeUrl) {
-        return convertYoutubeUrl(video.youtubeUrl);
+        return {
+          videoId: typeof video.id === 'number' ? video.id : null,
+          embedUrl: convertYoutubeUrl(video.youtubeUrl)
+        };
       }
     }
   } catch (e) {
     console.error('Erro ao buscar vídeo da aula:', e);
   }
   
-  return null;
+  return { videoId: null, embedUrl: null };
 };
 
 // Componente para carregar e exibir vídeo
@@ -112,12 +171,14 @@ function VideoPlayer({
   type = 'lesson',
   moduleNumber, 
   lessonNumber, 
-  title 
+  title,
+  onVideoLoaded
 }: { 
   type?: 'welcome' | 'lesson';
   moduleNumber?: number; 
   lessonNumber?: number; 
   title?: string;
+  onVideoLoaded?: (meta: LoadedVideoMeta) => void;
 }) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,21 +186,22 @@ function VideoPlayer({
   useEffect(() => {
     const loadVideo = async () => {
       setLoading(true);
-      let url: string | null = null;
+      let meta: LoadedVideoMeta = { videoId: null, embedUrl: null };
       
       if (type === 'welcome') {
         // Buscar o vídeo de boas-vindas no banco de dados (video_lessons)
-        url = await getWelcomeVideoUrl();
+        meta = await getWelcomeVideoMeta();
       } else if (moduleNumber !== undefined && lessonNumber !== undefined) {
         // Buscar vídeo de aula específica no banco de dados
-        url = await getLessonVideoUrl(moduleNumber, lessonNumber);
+        meta = await getLessonVideoMeta(moduleNumber, lessonNumber);
       }
       
-      setVideoUrl(url);
+      setVideoUrl(meta.embedUrl);
+      onVideoLoaded?.(meta);
       setLoading(false);
     };
     loadVideo();
-  }, [type, moduleNumber, lessonNumber]);
+  }, [type, moduleNumber, lessonNumber, onVideoLoaded]);
 
   if (loading) {
     return (
@@ -194,6 +256,164 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   const [temaSelecionado, setTemaSelecionado] = useState<string>('theme-fire-light');
   const [showWelcomeTour, setShowWelcomeTour] = useState(false);
   const { addToast } = useToast();
+
+  const [courseProgress, setCourseProgress] = useState<CourseProgress>({
+    progressPercent: 0,
+    modulesCompleted: 0,
+    lessonsCompleted: 0,
+    totalLessons: 0,
+    currentPhase: "Faísca",
+    nextPhase: PHASES[1] ?? PHASES[0],
+  });
+
+  const [moduleProgress, setModuleProgress] = useState<Record<number, ModuleProgress>>({});
+
+  // CPF pode vir de fluxos diferentes (app/page.tsx, App.tsx legado, etc.).
+  // Garantimos um CPF resolvido para habilitar interações (curtir/comentar/avaliar).
+  const [resolvedStudentCpf, setResolvedStudentCpf] = useState<string | undefined>(
+    studentCpf?.trim() ? studentCpf.trim() : undefined
+  );
+
+  const refreshCourseProgress = async (cpf?: string) => {
+    if (!cpf) return;
+
+    try {
+      const [publishedRes, progressRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/videos/published`),
+        fetch(`${API_BASE_URL}/videos/progress/student/${cpf}`),
+      ]);
+
+      const publishedRaw = publishedRes.ok ? await publishedRes.json() : [];
+      const progressRaw = progressRes.ok ? await progressRes.json() : [];
+
+      const publishedLessons: PublishedVideoLesson[] = Array.isArray(publishedRaw)
+        ? publishedRaw
+            .filter((v: any) => v && Number.isFinite(Number(v.id)))
+            .map((v: any) => ({
+              id: Number(v.id),
+              moduleNumber: Number(v.moduleNumber),
+              lessonNumber: Number(v.lessonNumber),
+              pageLocation: typeof v.pageLocation === 'string' ? v.pageLocation : undefined,
+            }))
+            .filter((v: PublishedVideoLesson) =>
+              Number.isFinite(v.moduleNumber) &&
+              Number.isFinite(v.lessonNumber) &&
+              v.pageLocation === 'aulas'
+            )
+        : [];
+
+      const publishedKey = (m: number, l: number) => `${m}:${l}`;
+      const publishedKeys = new Set(publishedLessons.map((v) => publishedKey(v.moduleNumber, v.lessonNumber)));
+
+      const completedKeys = new Set<string>();
+      if (Array.isArray(progressRaw)) {
+        for (const p of progressRaw) {
+          if (p?.completed !== true) continue;
+          const v = p?.videoLesson;
+          const moduleNumber = Number(v?.moduleNumber);
+          const lessonNumber = Number(v?.lessonNumber);
+          if (!Number.isFinite(moduleNumber) || !Number.isFinite(lessonNumber)) continue;
+          const key = publishedKey(moduleNumber, lessonNumber);
+          if (publishedKeys.has(key)) completedKeys.add(key);
+        }
+      }
+
+      const moduleTotals = new Map<number, number>();
+      const moduleCompleted = new Map<number, number>();
+      for (const v of publishedLessons) {
+        moduleTotals.set(v.moduleNumber, (moduleTotals.get(v.moduleNumber) ?? 0) + 1);
+      }
+      for (const key of completedKeys) {
+        const [mStr] = key.split(':');
+        const moduleNumber = Number(mStr);
+        if (!Number.isFinite(moduleNumber)) continue;
+        moduleCompleted.set(moduleNumber, (moduleCompleted.get(moduleNumber) ?? 0) + 1);
+      }
+
+      const nextModuleProgress: Record<number, ModuleProgress> = {};
+      for (const [moduleNumber, total] of moduleTotals.entries()) {
+        const completed = moduleCompleted.get(moduleNumber) ?? 0;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        nextModuleProgress[moduleNumber] = {
+          completed,
+          total,
+          percent,
+          done: total > 0 && completed >= total,
+        };
+      }
+      setModuleProgress(nextModuleProgress);
+
+      const totalLessons = publishedLessons.length;
+      const lessonsCompleted = completedKeys.size;
+      const progressPercent = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
+
+      // módulos completos = todos os lessons do módulo estão concluídos
+      const lessonsByModule = new Map<number, Set<string>>();
+      for (const v of publishedLessons) {
+        const set = lessonsByModule.get(v.moduleNumber) ?? new Set<string>();
+        set.add(publishedKey(v.moduleNumber, v.lessonNumber));
+        lessonsByModule.set(v.moduleNumber, set);
+      }
+
+      let modulesCompleted = 0;
+      for (const [, lessonKeys] of lessonsByModule.entries()) {
+        let moduleDone = true;
+        for (const k of lessonKeys) {
+          if (!completedKeys.has(k)) {
+            moduleDone = false;
+            break;
+          }
+        }
+        if (moduleDone && lessonKeys.size > 0) modulesCompleted += 1;
+      }
+
+      setCourseProgress({
+        progressPercent,
+        modulesCompleted,
+        lessonsCompleted,
+        totalLessons,
+        currentPhase: phaseFromProgressPercent(progressPercent),
+        nextPhase: nextPhaseFromProgressPercent(progressPercent),
+      });
+    } catch (e) {
+      console.error('Falha ao calcular progresso do curso', e);
+    }
+  };
+
+  useEffect(() => {
+    if (studentCpf?.trim()) {
+      setResolvedStudentCpf(studentCpf.trim());
+      return;
+    }
+
+    try {
+      const tryParse = (key: string): any => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      };
+
+      const fromStudentData = tryParse('student_data')?.cpf;
+      const fromUserData = tryParse('user_data')?.cpf;
+      const fromLegacySession = tryParse('crm_flame_session')?.studentCpf;
+      const fromStudentDataLegacy = tryParse('studentData')?.cpf;
+
+      const cpfCandidate =
+        (typeof fromStudentData === 'string' && fromStudentData) ||
+        (typeof fromUserData === 'string' && fromUserData) ||
+        (typeof fromLegacySession === 'string' && fromLegacySession) ||
+        (typeof fromStudentDataLegacy === 'string' && fromStudentDataLegacy) ||
+        undefined;
+
+      if (cpfCandidate) setResolvedStudentCpf(cpfCandidate);
+    } catch {
+      // se não conseguir resolver, apenas mantém undefined
+    }
+  }, [studentCpf]);
   
   // Estados para validação de token AWS
   const [showAwsTokenModal, setShowAwsTokenModal] = useState(false);
@@ -202,7 +422,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   const [validatingToken, setValidatingToken] = useState(false);
   const [awsAccessGranted, setAwsAccessGranted] = useState(false);
   const [showAwsWelcomeModal, setShowAwsWelcomeModal] = useState(false);
-  
+
   // Verificar se já tem acesso AWS salvo
   useEffect(() => {
     const awsAccess = localStorage.getItem('aws_study_access');
@@ -261,11 +481,10 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
     aplicarTema(temaSalvo);
   }, []);
   
-  // Carrega a página salva ao montar o componente
+  // Sempre inicia no Início ao entrar/logar (não reabrir última página salva)
   useEffect(() => {
-    const paginaSalva = localStorage.getItem('currentPage') as PageType || 'inicio';
-    console.log('Carregando página salva:', paginaSalva);
-    setCurrentPage(paginaSalva);
+    setCurrentPage('inicio');
+    localStorage.setItem('currentPage', 'inicio');
   }, []);
 
   // Verifica se é o primeiro acesso e mostra o tour automaticamente
@@ -362,13 +581,19 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
   
   // Dados de progresso do aluno
   const studentData = {
-    currentPhase: "Iniciante",
-    nextPhase: "Faísca",
-    progressPercent: 0,
+    currentPhase: courseProgress.currentPhase,
+    nextPhase: courseProgress.nextPhase,
+    progressPercent: courseProgress.progressPercent,
+    lessonsCompleted: courseProgress.lessonsCompleted,
     streak: 0,
     xp: 0,
     nextLevelXp: 500,
   };
+
+  useEffect(() => {
+    refreshCourseProgress(resolvedStudentCpf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedStudentCpf]);
 
   const menuItems = [
     { id: "inicio" as PageType, icon: House, label: "Início" },
@@ -572,7 +797,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
                 <Flame size={16} className="text-orange-400" />
                 <span className="font-semibold text-orange-400">{studentData.streak} dias</span>
               </div>
-                <NotificationCenter />
+                <NotificationCenter studentCpf={resolvedStudentCpf} />
             </div>
           </div>
         </header>
@@ -589,8 +814,24 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
               className="p-4 lg:p-6"
             >
               {currentPage === "inicio" && <HomePage studentData={studentData} studentName={studentName} />}
-              {currentPage === "trilha" && <TrilhaPage setCurrentPage={setCurrentPage} />}
-              {currentPage === "aulas" && <AulasPage />}
+              {currentPage === "trilha" && (
+                <TrilhaPage
+                  setCurrentPage={setCurrentPage}
+                  moduleProgress={moduleProgress}
+                  overall={{
+                    progressPercent: courseProgress.progressPercent,
+                    modulesCompleted: courseProgress.modulesCompleted,
+                    totalModules: TOTAL_MODULES,
+                  }}
+                />
+              )}
+              {currentPage === "aulas" && (
+                <AulasPage
+                  studentName={studentName}
+                  studentCpf={resolvedStudentCpf}
+                  onProgressSaved={() => refreshCourseProgress(resolvedStudentCpf)}
+                />
+              )}
               {currentPage === "desafios" && <DesafiosPage />}
               {currentPage === "conquistas" && <ConquistasPage />}
               {currentPage === "materiais" && <MateriaisPage />}
@@ -857,6 +1098,7 @@ export function StudentDashboard({ studentName, studentCpf, onLogout }: StudentD
 // ===== PÁGINAS =====
 
 function HomePage({ studentData, studentName }: { studentData: any; studentName: string }) {
+  const hasCompletedAnyLesson = Number(studentData?.lessonsCompleted ?? 0) > 0;
   const [checklist, setChecklist] = useState([
     { id: 1, text: "Assistir uma aula", done: false },
     { id: 2, text: "Fazer 1 commit no GitHub", done: false },
@@ -864,6 +1106,7 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
   ]);
 
   const toggleCheck = (id: number) => {
+    if (id === 1) return;
     setChecklist(prev => prev.map(item => item.id === id ? { ...item, done: !item.done } : item));
   };
 
@@ -959,7 +1202,9 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
               <div
                 key={phase}
                 className={`flex-1 rounded-full py-2 text-center text-xs font-semibold ${
-                  index === 0 ? "bg-primary/10 text-primary" : "bg-muted/30 text-muted-foreground"
+                  studentData.currentPhase === phase
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted/30 text-muted-foreground"
                 }`}
               >
                 {phase}
@@ -973,6 +1218,10 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
           <h3 className="mb-4 text-xl font-bold text-foreground">Tarefas de hoje ✨</h3>
           <div className="space-y-3">
             {checklist.map((item) => (
+              (() => {
+                const effectiveDone = item.id === 1 ? hasCompletedAnyLesson : item.done;
+
+                return (
               <label
                 key={item.id}
                 onClick={(e) => {
@@ -986,24 +1235,26 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
               >
                 <input
                   type="checkbox"
-                  checked={item.done}
+                  checked={effectiveDone}
                   onChange={() => toggleCheck(item.id)}
                   className="peer sr-only"
                 />
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg border-2 border-border bg-card transition peer-checked:border-primary peer-checked:bg-primary">
-                  {item.done && <Check size={16} className="text-foreground" />}
+                  {effectiveDone && <Check size={16} className="text-foreground" />}
                 </div>
-                <span className={`flex-1 font-medium transition ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                <span className={`flex-1 font-medium transition ${effectiveDone ? "text-muted-foreground line-through" : "text-foreground"}`}>
                   {item.text}
                 </span>
                 {item.id === 1 && (
                   <ArrowRight size={16} className="text-primary" />
                 )}
               </label>
+                );
+              })()
             ))}
           </div>
           <p className="mt-4 text-center text-sm font-medium text-muted-foreground">
-            +50 XP por tarefa concluída
+            XP por tarefa concluída
           </p>
         </div>
       </div>
@@ -1037,7 +1288,19 @@ function HomePage({ studentData, studentName }: { studentData: any; studentName:
   );
 }
 
-function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => void }) {
+function TrilhaPage({
+  setCurrentPage,
+  moduleProgress,
+  overall,
+}: {
+  setCurrentPage: (page: PageType) => void;
+  moduleProgress: Record<number, { completed: number; total: number; percent: number; done: boolean }>;
+  overall: { progressPercent: number; modulesCompleted: number; totalModules: number };
+}) {
+  const overallModulesPercent = overall.totalModules > 0
+    ? Math.round((overall.modulesCompleted / overall.totalModules) * 100)
+    : 0;
+
   const modulos = [
     {
       numero: 0,
@@ -1053,7 +1316,7 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
       progresso: 0,
       desbloqueado: true,
       concluido: false,
-      fase: "Preparação",
+      fase: "Faísca",
       destaque: true,
       gratuito: true
     },
@@ -1283,19 +1546,19 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
     <div className="mx-auto max-w-5xl">
       <div className="mb-8">
         <h1 className="mb-2 font-bold text-foreground">Trilha de Aprendizado</h1>
-        <p className="text-muted-foreground">12 módulos para se tornar um desenvolvedor Full Stack profissional</p>
+        <p className="text-muted-foreground">13 módulos para se tornar um desenvolvedor Full Stack profissional</p>
       </div>
 
       {/* Indicador de progresso geral */}
       <div className="mb-8 rounded-xl border border-border bg-gradient-to-br from-primary/10 via-transparent to-orange-500/5 p-6">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-semibold text-foreground">Progresso Geral</span>
-          <span className="text-orange-400">0 de 12 módulos</span>
+          <span className="text-orange-400">{overall.modulesCompleted} de {overall.totalModules} módulos</span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-muted">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: "0%" }}
+            animate={{ width: `${overallModulesPercent}%` }}
             transition={{ duration: 1, delay: 0.2 }}
             className="h-full bg-gradient-to-r from-orange-500 to-red-500"
           />
@@ -1304,7 +1567,11 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
 
       {/* Lista de módulos */}
       <div className="space-y-4">
-        {modulos.map((modulo) => (
+        {modulos.map((modulo) => {
+          const progress = moduleProgress?.[modulo.numero];
+          const progressoPercent = progress?.percent ?? 0;
+
+          return (
           <motion.div
             key={modulo.numero}
             initial={{ opacity: 0, y: 20 }}
@@ -1339,10 +1606,10 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all"
-                        style={{ width: `${modulo.progresso}%` }}
+                        style={{ width: `${progressoPercent}%` }}
                       />
                     </div>
-                    <span className="text-xs text-orange-400">{modulo.progresso}%</span>
+                    <span className="text-xs text-orange-400">{progressoPercent}%</span>
                   </div>
                 </div>
 
@@ -1410,7 +1677,8 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
               )}
             </AnimatePresence>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Card final motivacional */}
@@ -1425,9 +1693,94 @@ function TrilhaPage({ setCurrentPage }: { setCurrentPage: (page: PageType) => vo
   );
 }
 
-function AulasPage() {
+function AulasPage({
+  studentName,
+  studentCpf,
+  onProgressSaved,
+}: {
+  studentName: string;
+  studentCpf?: string;
+  onProgressSaved?: () => void;
+}) {
   const [aulaAtual, setAulaAtual] = useState<number | null>(null);
-  const [aulasCompletas, setAulasCompletas] = useState<number[]>([]);
+  const [aulasCompletas, setAulasCompletas] = useState<Set<string>>(new Set());
+
+  const { addToast } = useToast();
+
+  // ID real do vídeo no backend (video_lessons.id) para interações (like/comment/rating)
+  const [currentLessonVideoId, setCurrentLessonVideoId] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Quando troca de aula, reseta até o player carregar o vídeo e informar o id
+    setCurrentLessonVideoId(null);
+  }, [aulaAtual]);
+
+  const lessonKey = (moduleNumber: number, lessonNumber: number) => `${moduleNumber}:${lessonNumber}`;
+
+  useEffect(() => {
+    const carregarProgressoSalvo = async () => {
+      if (!studentCpf) return;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/videos/progress/student/${studentCpf}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+
+        const completedKeys = data
+          .filter((p: any) => p?.completed === true)
+          .map((p: any) => p?.videoLesson)
+          .filter((v: any) => v && Number.isFinite(Number(v.moduleNumber)) && Number.isFinite(Number(v.lessonNumber)))
+          .map((v: any) => lessonKey(Number(v.moduleNumber), Number(v.lessonNumber)));
+
+        setAulasCompletas(new Set(completedKeys));
+      } catch (e) {
+        console.error("Falha ao carregar progresso salvo", e);
+      }
+    };
+
+    carregarProgressoSalvo();
+  }, [studentCpf]);
+
+  useEffect(() => {
+    const openFromPayload = (payload: any) => {
+      const moduleNumber = Number(payload?.moduleNumber);
+      const lessonNumber = Number(payload?.lessonNumber);
+      if (Number.isNaN(moduleNumber) || Number.isNaN(lessonNumber)) return;
+
+      // Por enquanto, a página de aulas renderiza o Módulo 0 (ids 1..n)
+      if (moduleNumber !== 0) return;
+
+      setAulaAtual(lessonNumber);
+    };
+
+    // 1) Caso o evento tenha sido disparado antes da página montar
+    try {
+      const raw = localStorage.getItem('pending_lesson_nav');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        openFromPayload(parsed);
+        localStorage.removeItem('pending_lesson_nav');
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2) Caso já esteja na página e chegue um novo clique
+    const handler = (evt: Event) => {
+      const custom = evt as CustomEvent;
+      openFromPayload(custom.detail);
+      try {
+        localStorage.removeItem('pending_lesson_nav');
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('navigate-to-lesson', handler as EventListener);
+    return () => window.removeEventListener('navigate-to-lesson', handler as EventListener);
+  }, []);
 
   const aulas = [
     {
@@ -1538,13 +1891,49 @@ function AulasPage() {
     }
   ];
 
-  const marcarComoConcluida = (id: number) => {
-    if (!aulasCompletas.includes(id)) {
-      setAulasCompletas([...aulasCompletas, id]);
+  const marcarComoConcluida = async (id: number): Promise<boolean> => {
+    const aula = aulas.find((a) => a.id === id);
+    if (!aula) return false;
+
+    const key = lessonKey(aula.modulo, aula.id);
+    if (aulasCompletas.has(key)) return true;
+
+    if (!studentCpf) {
+      addToast({ type: "error", title: "CPF do aluno não informado", description: "Faça login novamente." });
+      return false;
+    }
+
+    if (!currentLessonVideoId) {
+      addToast({ type: "error", title: "Aula ainda carregando", description: "Aguarde o vídeo aparecer e tente novamente." });
+      return false;
+    }
+
+    try {
+      await axios.post(`${API_BASE_URL}/videos/${currentLessonVideoId}/progress`, {
+        studentCpf,
+        completed: true,
+        watchedSeconds: 0,
+        progressPercentage: 100,
+      });
+
+      setAulasCompletas((prev) => {
+        const next = new Set(prev);
+        next.add(key);
+        return next;
+      });
+      addToast({ type: "success", title: "Aula concluída", description: "Seu progresso foi salvo." });
+      onProgressSaved?.();
+      return true;
+    } catch (e) {
+      console.error("Falha ao marcar aula como concluída", e);
+      addToast({ type: "error", title: "Falha ao salvar", description: "Não foi possível salvar sua conclusão. Tente novamente." });
+      return false;
     }
   };
 
-  const progressoModulo0 = Math.round((aulasCompletas.length / aulas.length) * 100);
+  const aulasModulo0 = aulas.filter((a) => a.modulo === 0);
+  const completadasModulo0 = aulasModulo0.filter((a) => aulasCompletas.has(lessonKey(a.modulo, a.id))).length;
+  const progressoModulo0 = aulasModulo0.length > 0 ? Math.round((completadasModulo0 / aulasModulo0.length) * 100) : 0;
 
   if (aulaAtual !== null) {
     const aula = aulas.find(a => a.id === aulaAtual);
@@ -1583,12 +1972,13 @@ function AulasPage() {
                 moduleNumber={aula.modulo} 
                 lessonNumber={aula.id} 
                 title={aula.titulo}
+                onVideoLoaded={(meta) => setCurrentLessonVideoId(meta.videoId)}
               />
             </div>
           </div>
 
           {/* Interações com a Aula */}
-          <VideoInteractionPanel videoId={aula.id} studentName="Aluno" studentCpf="00000000000" />
+          <VideoInteractionPanel videoId={currentLessonVideoId ?? undefined} studentName={studentName} studentCpf={studentCpf} />
 
           {/* Conteúdo */}
           <div className="rounded-xl border border-border bg-card/50 p-6">
@@ -1612,14 +2002,14 @@ function AulasPage() {
           {/* Ações */}
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
-              onClick={() => {
-                marcarComoConcluida(aula.id);
-                setAulaAtual(null);
+              onClick={async () => {
+                const ok = await marcarComoConcluida(aula.id);
+                if (ok) setAulaAtual(null);
               }}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-orange-500/25 transition hover:shadow-orange-500/40"
             >
               <Check size={18} />
-              {aulasCompletas.includes(aula.id) ? "Aula concluída" : "Marcar como concluída"}
+              {aulasCompletas.has(lessonKey(aula.modulo, aula.id)) ? "Aula concluída" : "Marcar como concluída"}
             </button>
             {aula.id < aulas.length && (
               <button
@@ -1678,7 +2068,7 @@ function AulasPage() {
         {/* Lista de aulas */}
         <div className="divide-y divide-white/5">
           {aulas.map((aula, index) => {
-            const concluida = aulasCompletas.includes(aula.id);
+            const concluida = aulasCompletas.has(lessonKey(aula.modulo, aula.id));
             return (
               <button
                 key={aula.id}
@@ -1785,6 +2175,41 @@ function MateriaisPage() {
 function AwsStudyPage() {
   const figmaUrl = process.env.NEXT_PUBLIC_AWS_FIGMA_URL || "https://www.figma.com/embed";
 
+  const [awsSummary, setAwsSummary] = useState({
+    accuracy: 0,
+    totalExams: 0,
+    avgSecondsPerQuestion: 0,
+  });
+
+  useEffect(() => {
+    const stats = StatisticsManager.getStats();
+
+    const totalQuestions = stats.totalQuestions ?? 0;
+    const totalExams = stats.totalExams ?? 0;
+    const accuracy = stats.overallAccuracy ?? 0;
+
+    const totalTimeSpent = (stats.examHistory ?? []).reduce((acc: number, exam: any) => {
+      return acc + (typeof exam?.timeSpent === 'number' ? exam.timeSpent : 0);
+    }, 0);
+
+    const avgSecondsPerQuestion = totalQuestions > 0 ? totalTimeSpent / totalQuestions : 0;
+
+    setAwsSummary({
+      accuracy,
+      totalExams,
+      avgSecondsPerQuestion,
+    });
+  }, []);
+
+  const formatAvgTime = (seconds: number): string => {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+    const totalSeconds = Math.round(seconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    if (minutes <= 0) return `${remainingSeconds}s`;
+    return `${minutes}m ${String(remainingSeconds).padStart(2, "0")}s`;
+  };
+
   const resources = [
     {
       title: "Cloud Practitioner (CLF-C02)",
@@ -1813,10 +2238,10 @@ function AwsStudyPage() {
   ];
 
   const tracks = [
-    { name: "Foundations", progress: 55, focus: "Cloud, global infra, IAM, billing" },
-    { name: "Core Services", progress: 32, focus: "EC2, S3, RDS, networking" },
-    { name: "Security & Cost", progress: 20, focus: "IAM guardrails, budgets, alerts" },
-    { name: "Exam Prep", progress: 10, focus: "Banco de questões, simulados" },
+    { name: "Foundations", progress: 0, focus: "Cloud, global infra, IAM, billing" },
+    { name: "Core Services", progress: 0, focus: "EC2, S3, RDS, networking" },
+    { name: "Security & Cost", progress: 0, focus: "IAM guardrails, budgets, alerts" },
+    { name: "Exam Prep", progress: 0, focus: "Banco de questões, simulados" },
   ];
 
   const labs = [
@@ -1868,7 +2293,7 @@ function AwsStudyPage() {
             <span>Taxa de acerto</span>
             <BarChart3 size={16} className="text-orange-300" />
           </div>
-          <div className="text-3xl font-bold text-foreground">78%</div>
+          <div className="text-3xl font-bold text-foreground">{Math.round(awsSummary.accuracy)}%</div>
           <p className="text-xs text-foreground/60">Meta 72%+ (CLF). Treine fraquezas primeiro.</p>
         </div>
         <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
@@ -1876,7 +2301,7 @@ function AwsStudyPage() {
             <span>Simulados feitos</span>
             <Trophy size={16} className="text-yellow-300" />
           </div>
-          <div className="text-3xl font-bold text-foreground">3</div>
+          <div className="text-3xl font-bold text-foreground">{awsSummary.totalExams}</div>
           <p className="text-xs text-foreground/60">Use modo rápido de 20 questões para revisão diária.</p>
         </div>
         <div className="rounded-2xl border border-border/10 bg-muted/5 p-5">
@@ -1884,7 +2309,7 @@ function AwsStudyPage() {
             <span>Média de tempo</span>
             <Clock size={16} className="text-blue-300" />
           </div>
-          <div className="text-3xl font-bold text-foreground">1m 05s</div>
+          <div className="text-3xl font-bold text-foreground">{formatAvgTime(awsSummary.avgSecondsPerQuestion)}</div>
           <p className="text-xs text-foreground/60">Por questão. Priorize leitura das palavras-chave.</p>
         </div>
       </div>
@@ -2308,9 +2733,9 @@ function ContaPage({ studentName, onLogout, temas, temaSelecionado, aplicarTema,
 // ========== COMPONENTE DE INTERAÇÃO COM VÍDEOS ==========
 
 interface VideoInteractionPanelProps {
-  videoId: number;
+  videoId?: number;
   studentName: string;
-  studentCpf: string;
+  studentCpf?: string;
 }
 
 function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoInteractionPanelProps) {
@@ -2319,19 +2744,24 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [ratings, setRatings] = useState({ content: 0, audio: 0, video: 0 });
   const [averageRatings, setAverageRatings] = useState({ contentAvg: 0, audioAvg: 0, videoAvg: 0, count: 0 });
+  const { addToast } = useToast();
 
   useEffect(() => {
+    if (!videoId || !studentCpf) return;
     loadInteractions();
   }, [videoId]);
 
   useEffect(() => {
+    if (!videoId) return;
     let isActive = true;
 
     const refreshLikesCount = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/videos/${videoId}/likes/count`);
+        const res = await fetch(`${API_BASE_URL}/videos/${videoId}/likes/count`);
         if (!res.ok) return;
         const count = await res.json();
         if (isActive) setLikesCount(typeof count === 'number' ? count : 0);
@@ -2352,8 +2782,10 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
 
   const loadInteractions = async () => {
     try {
+      if (!videoId || !studentCpf) return;
       // Carregar estatísticas
-      const statsRes = await fetch(`http://localhost:8080/api/videos/${videoId}/stats?studentCpf=${studentCpf}`);
+      const statsRes = await fetch(`${API_BASE_URL}/videos/${videoId}/stats?studentCpf=${studentCpf}`);
+      if (!statsRes.ok) return;
       const stats = await statsRes.json();
       
       setLikesCount(stats.totalLikes || 0);
@@ -2367,7 +2799,7 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
       });
 
       // Carregar avaliação do usuário
-      const ratingRes = await fetch(`http://localhost:8080/api/videos/${videoId}/rating?studentCpf=${studentCpf}`);
+      const ratingRes = await fetch(`${API_BASE_URL}/videos/${videoId}/rating?studentCpf=${studentCpf}`);
       if (ratingRes.ok) {
         const userRating = await ratingRes.json();
         setRatings({
@@ -2382,8 +2814,16 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
   };
 
   const handleLike = async () => {
+    if (!videoId) {
+      addToast({ type: 'error', title: 'Vídeo não carregado ainda.' });
+      return;
+    }
+    if (!studentCpf) {
+      addToast({ type: 'error', title: 'CPF do aluno não informado.' });
+      return;
+    }
     try {
-      const res = await fetch(`http://localhost:8080/api/videos/${videoId}/like?studentCpf=${studentCpf}`, {
+      const res = await fetch(`${API_BASE_URL}/videos/${videoId}/like?studentCpf=${studentCpf}`, {
         method: 'POST'
       });
 
@@ -2397,14 +2837,25 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
       if (data && typeof data.totalLikes === 'number') setLikesCount(data.totalLikes);
     } catch (error) {
       console.error('Erro ao curtir:', error);
+      addToast({ type: 'error', title: 'Não foi possível curtir agora.' });
     }
   };
 
   const handleComment = async () => {
     if (!newComment.trim()) return;
+
+    if (!videoId) {
+      addToast({ type: 'error', title: 'Vídeo não carregado ainda.' });
+      return;
+    }
+
+    if (!studentCpf) {
+      addToast({ type: 'error', title: 'CPF do aluno não informado.' });
+      return;
+    }
     
     try {
-      const res = await fetch(`http://localhost:8080/api/videos/${videoId}/comments`, {
+      const res = await fetch(`${API_BASE_URL}/videos/${videoId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentName, studentCpf, comment: newComment })
@@ -2413,15 +2864,31 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
       if (res.ok) {
         setNewComment('');
         loadInteractions();
+        addToast({ type: 'success', title: 'Comentário enviado!' });
+      } else {
+        addToast({ type: 'error', title: 'Falha ao comentar', description: `HTTP ${res.status}` });
       }
     } catch (error) {
       console.error('Erro ao comentar:', error);
+      addToast({ type: 'error', title: 'Não foi possível comentar agora.' });
     }
   };
 
   const handleRating = async () => {
+    if (!videoId) {
+      addToast({ type: 'error', title: 'Vídeo não carregado ainda.' });
+      return;
+    }
+
+    if (!studentCpf) {
+      addToast({ type: 'error', title: 'CPF do aluno não informado.' });
+      return;
+    }
+
+    if (ratingSubmitting) return;
+    setRatingSubmitting(true);
     try {
-      await fetch(`http://localhost:8080/api/videos/${videoId}/rating`, {
+      const res = await fetch(`${API_BASE_URL}/videos/${videoId}/rating`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2431,11 +2898,26 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
           videoQualityRating: ratings.video
         })
       });
-      
-      setShowRatingModal(false);
-      loadInteractions();
+
+      if (!res.ok) {
+        addToast({ type: 'error', title: 'Falha ao salvar avaliação', description: `HTTP ${res.status}` });
+        setRatingSubmitting(false);
+        return;
+      }
+
+      setRatingSubmitted(true);
+      await loadInteractions();
+      addToast({ type: 'success', title: 'Avaliação salva!' });
+
+      window.setTimeout(() => {
+        setShowRatingModal(false);
+        setRatingSubmitted(false);
+        setRatingSubmitting(false);
+      }, 900);
     } catch (error) {
       console.error('Erro ao avaliar:', error);
+      addToast({ type: 'error', title: 'Não foi possível salvar sua avaliação.' });
+      setRatingSubmitting(false);
     }
   };
 
@@ -2574,10 +3056,45 @@ function VideoInteractionPanel({ videoId, studentName, studentCpf }: VideoIntera
 
                 <button
                   onClick={handleRating}
-                  disabled={!ratings.content || !ratings.audio || !ratings.video}
+                  disabled={ratingSubmitting || ratingSubmitted || !ratings.content || !ratings.audio || !ratings.video}
                   className="w-full rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
                 >
-                  Enviar Avaliação
+                  {ratingSubmitted ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <motion.span
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: [0.8, 1.15, 1], opacity: 1 }}
+                        transition={{ duration: 0.35 }}
+                        className="inline-flex"
+                      >
+                        <Check size={18} />
+                      </motion.span>
+                      <motion.span
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, delay: 0.05 }}
+                      >
+                        Concluído
+                      </motion.span>
+                    </span>
+                  ) : ratingSubmitting ? (
+                    <motion.span
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="inline-flex items-center justify-center gap-2"
+                    >
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+                        className="inline-flex"
+                      >
+                        ⏳
+                      </motion.span>
+                      Enviando...
+                    </motion.span>
+                  ) : (
+                    'Enviar Avaliação'
+                  )}
                 </button>
               </div>
             </div>

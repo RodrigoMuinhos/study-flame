@@ -20,6 +20,18 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { AWSBenefitsCards } from './AWSBenefitsCards';
 import { loadExamState } from '@/lib/exam-engine';
 import { useRouter } from 'next/navigation';
+import { useAWSStudy } from '@/contexts/AWSStudyContext';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+
+type GamificationLevelInfo = {
+  current: number;
+  xp: number;
+  xpToNext: number;
+  xpCurrentLevelMin?: number;
+  xpCurrentLevelMax?: number;
+  title: string;
+};
 
 interface DashboardHomeProps {
   onSelectDiagram: () => void;
@@ -34,6 +46,8 @@ interface DashboardHomeProps {
 export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam, onSelectOfficialExam, onSelectStats, onSelectStudyPlan, onSelectReview }: DashboardHomeProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [levelInfo, setLevelInfo] = useState<GamificationLevelInfo | null>(null);
+  const { userInfo } = useAWSStudy();
   
   // Evita hydration error com dados do localStorage
   useEffect(() => {
@@ -59,14 +73,17 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
   // Carregar última prova do localStorage
   const lastExam = mounted ? loadExamState() : null;
   const hasLastExam = lastExam && lastExam.finished;
-  
-  // Calcular XP necessário para próximo nível usando mesma fórmula do StatisticsManager
-  const nextLevel = stats.level + 1;
-  const xpForNextLevel = nextLevel * nextLevel * 50;
-  const xpForCurrentLevel = stats.level * stats.level * 50;
-  const xpInCurrentLevel = stats.totalXP - xpForCurrentLevel;
-  const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
-  const xpProgress = Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100);
+
+  useEffect(() => {
+    const cpf = userInfo?.cpf;
+    if (!cpf) return;
+    fetch(`${API_BASE_URL}/gamification/student/${cpf}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.level) setLevelInfo(data.level);
+      })
+      .catch(() => undefined);
+  }, [userInfo?.cpf]);
 
   // Dados para gráficos
   const recentExams = stats.examHistory.slice(0, 7).reverse().map((exam, idx) => ({
@@ -111,7 +128,7 @@ export function DashboardHome({ onSelectDiagram, onSelectTraining, onSelectExam,
               </div>
               <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base">
                 <Trophy className="text-yellow-300" size={18} />
-                <span className="font-bold">Nível {mounted ? stats.level : 1}</span>
+                <span className="font-bold">Nível {levelInfo?.current ?? 1}</span>
               </div>
             </div>
           </div>

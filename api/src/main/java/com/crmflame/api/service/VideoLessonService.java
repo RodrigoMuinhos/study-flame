@@ -1,21 +1,25 @@
 package com.crmflame.api.service;
 
-import com.crmflame.api.dto.VideoLessonDTO;
-import com.crmflame.api.dto.VideoLessonRequestDTO;
-import com.crmflame.api.model.VideoLesson;
-import com.crmflame.api.repository.VideoLessonRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.crmflame.api.dto.VideoLessonDTO;
+import com.crmflame.api.dto.VideoLessonRequestDTO;
+import com.crmflame.api.model.Notification;
+import com.crmflame.api.model.VideoLesson;
+import com.crmflame.api.repository.VideoLessonRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class VideoLessonService {
 
     private final VideoLessonRepository videoLessonRepository;
+    private final NotificationService notificationService;
 
     /**
      * Listar todos os vídeos (para admin)
@@ -77,8 +81,13 @@ public class VideoLessonService {
         video.setOrderIndex(request.getOrderIndex());
         video.setIsPublished(request.getIsPublished());
         video.setPageLocation(request.getPageLocation());
+        video.setXpReward(request.getXpReward());
 
         VideoLesson saved = videoLessonRepository.save(video);
+
+        if (Boolean.TRUE.equals(saved.getIsPublished())) {
+            notifyVideoPublished(saved);
+        }
         return convertToDTO(saved);
     }
 
@@ -90,6 +99,8 @@ public class VideoLessonService {
         VideoLesson video = videoLessonRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
 
+        boolean wasPublished = Boolean.TRUE.equals(video.getIsPublished());
+
         video.setModuleNumber(request.getModuleNumber());
         video.setLessonNumber(request.getLessonNumber());
         video.setTitle(request.getTitle());
@@ -99,8 +110,14 @@ public class VideoLessonService {
         video.setOrderIndex(request.getOrderIndex());
         video.setIsPublished(request.getIsPublished());
         video.setPageLocation(request.getPageLocation());
+        video.setXpReward(request.getXpReward());
 
         VideoLesson updated = videoLessonRepository.save(video);
+
+        boolean isPublishedNow = Boolean.TRUE.equals(updated.getIsPublished());
+        if (!wasPublished && isPublishedNow) {
+            notifyVideoPublished(updated);
+        }
         return convertToDTO(updated);
     }
 
@@ -112,9 +129,49 @@ public class VideoLessonService {
         VideoLesson video = videoLessonRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
 
+        boolean wasPublished = Boolean.TRUE.equals(video.getIsPublished());
         video.setIsPublished(!video.getIsPublished());
         VideoLesson updated = videoLessonRepository.save(video);
+
+        boolean isPublishedNow = Boolean.TRUE.equals(updated.getIsPublished());
+        if (!wasPublished && isPublishedNow) {
+            notifyVideoPublished(updated);
+        }
         return convertToDTO(updated);
+    }
+
+    /**
+     * Dispara manualmente uma notificação para um vídeo já publicado.
+     */
+    @Transactional
+    public void notifyPublished(Long id) {
+        VideoLesson video = videoLessonRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
+
+        if (!Boolean.TRUE.equals(video.getIsPublished())) {
+            throw new IllegalStateException("Vídeo não está publicado");
+        }
+
+        notifyVideoPublished(video);
+    }
+
+    private void notifyVideoPublished(VideoLesson video) {
+        notificationService.create(
+                Notification.Type.INFO,
+                "📚 Novo conteúdo disponível",
+                buildVideoPublishedMessage(video),
+                "📚"
+        );
+    }
+
+    private String buildVideoPublishedMessage(VideoLesson video) {
+        String title = video.getTitle() != null ? video.getTitle() : "Nova aula";
+        Integer module = video.getModuleNumber();
+        Integer lesson = video.getLessonNumber();
+        if (module != null && lesson != null) {
+            return "Foi publicada a aula \"" + title + "\" (Módulo " + module + ", Aula " + lesson + ").";
+        }
+        return "Foi publicado um novo conteúdo: \"" + title + "\".";
     }
 
     /**
@@ -143,6 +200,7 @@ public class VideoLessonService {
         dto.setOrderIndex(video.getOrderIndex());
         dto.setIsPublished(video.getIsPublished());
         dto.setPageLocation(video.getPageLocation());
+        dto.setXpReward(video.getXpReward());
         dto.setCreatedAt(video.getCreatedAt());
         dto.setUpdatedAt(video.getUpdatedAt());
         return dto;

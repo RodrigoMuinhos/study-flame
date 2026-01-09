@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import * as React from "react";
-import { 
+import {
   Users, 
   TrendingUp, 
   Activity, 
@@ -20,6 +20,7 @@ import {
   LogOut,
   Plus,
   Trash2,
+  Bell,
   Edit,
   CheckCircle,
   XCircle,
@@ -39,8 +40,6 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { AccessSection } from "./AccessSection";
 import { AwsTokenGenerator } from "./AwsTokenGenerator";
-import { leadService, type Lead } from "@/services/api";
-import { NotificationCenter } from "./ui/notification-center";
 import { useToast } from "./ui/toast";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
@@ -82,6 +81,10 @@ interface VideoLesson {
   isPublished: boolean;
   moduleNumber: number;
   lessonNumber: number;
+  durationMinutes?: number;
+  xpReward?: number;
+  pageLocation?: string;
+  orderIndex?: number;
 }
 
 interface Invite {
@@ -172,9 +175,13 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             title: v.title,
             youtubeUrl: v.youtubeUrl,
             duration: `${v.durationMinutes} min`,
+            durationMinutes: v.durationMinutes,
+            xpReward: typeof v.xpReward === "number" ? v.xpReward : 0,
             isPublished: v.isPublished,
             moduleNumber: v.moduleNumber,
-            lessonNumber: v.lessonNumber
+            lessonNumber: v.lessonNumber,
+            pageLocation: v.pageLocation,
+            orderIndex: v.orderIndex
           }));
           setVideos(videosFormatados);
         }
@@ -187,29 +194,70 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     carregarVideos();
   }, []);
 
-  // Integrar com backend: carregar leads e popular alunos do painel
+  type AdminStudentApi = {
+    id?: string;
+    name?: string;
+    email?: string;
+    cpf?: string;
+    progress?: number;
+    phase?: string;
+    streak?: number;
+    xp?: number;
+    modulesCompleted?: number;
+    lastAccess?: string;
+  };
+
+  const toStableNumberId = (id?: string, fallbackSeed?: string): number => {
+    const raw = (id ?? fallbackSeed ?? "").replace(/-/g, "");
+    const hex = raw.slice(0, 8);
+    const n = parseInt(hex, 16);
+    if (Number.isFinite(n)) return n;
+    return Date.now();
+  };
+
+  const formatLastAccess = (iso?: string): string => {
+    if (!iso) return "Nunca";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "Nunca";
+
+    const diffMs = Date.now() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return "0 min atrás";
+    if (diffMin < 60) return `${diffMin} min atrás`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} hora${diffHours === 1 ? "" : "s"} atrás`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} dia${diffDays === 1 ? "" : "s"} atrás`;
+  };
+
+  // Integrar com backend: carregar alunos com métricas reais
   useEffect(() => {
-    const carregarLeads = async () => {
+    const carregarAlunos = async () => {
       try {
-        const leads: Lead[] = await leadService.getAll();
-        const alunosConvertidos: Student[] = leads.map((l) => ({
-          id: Date.parse(l.createdAt ?? new Date().toISOString()) || Date.now(),
-          name: l.name,
-          email: l.email,
-          cpf: l.cpf,
-          progress: 0,
-          phase: "Início",
-          streak: 0,
-          lastAccess: "Nunca",
-          modulesCompleted: 0,
+        const res = await fetch(`${API_BASE_URL}/admin/students`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data: AdminStudentApi[] = await res.json();
+
+        const alunosConvertidos: Student[] = (Array.isArray(data) ? data : []).map((s) => ({
+          id: toStableNumberId(s.id, s.cpf),
+          name: s.name ?? "",
+          email: s.email ?? "",
+          cpf: s.cpf ?? "",
+          progress: Number(s.progress ?? 0),
+          phase: s.phase ?? "Início",
+          streak: Number(s.streak ?? 0),
+          lastAccess: formatLastAccess(s.lastAccess),
+          modulesCompleted: Number(s.modulesCompleted ?? 0),
           accessEnabled: true,
         }));
+
         setStudents(alunosConvertidos);
       } catch (e) {
-        console.error("Falha ao carregar leads do backend", e);
+        console.error("Falha ao carregar alunos do backend", e);
       }
     };
-    carregarLeads();
+
+    carregarAlunos();
   }, []);
 
   useEffect(() => {
@@ -248,7 +296,9 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [newVideoTitle, setNewVideoTitle] = useState("");
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newVideoDuration, setNewVideoDuration] = useState("");
+  const [newVideoXpReward, setNewVideoXpReward] = useState("0");
   const [newVideoPage, setNewVideoPage] = useState("aulas");
+  const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
 
   // Dados simulados de alunos
   const [students, setStudents] = useState<Student[]>([]);
@@ -313,6 +363,41 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     }
   };
 
+  const notifyVideoPublished = async (videoId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/videos/${videoId}/notify`, {
+        method: 'POST'
+      });
+
+      if (response.ok || response.status === 204) {
+        addToast({
+          title: "Notificação enviada",
+          description: "Os alunos serão avisados na campainha.",
+          type: "success"
+        });
+      } else if (response.status === 400) {
+        addToast({
+          title: "Não foi possível notificar",
+          description: "Publique o vídeo antes de notificar os alunos.",
+          type: "warning"
+        });
+      } else {
+        addToast({
+          title: "Erro ao notificar",
+          description: "Tente novamente em instantes.",
+          type: "error"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao notificar vídeo:', error);
+      addToast({
+        title: "Erro ao notificar",
+        description: "Tente novamente em instantes.",
+        type: "error"
+      });
+    }
+  };
+
   const handleDeleteVideo = async (videoId: number) => {
     if (!confirm('Tem certeza que deseja deletar este vídeo?')) {
       return;
@@ -334,9 +419,55 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     }
   };
 
+  const resetVideoForm = () => {
+    setNewVideoModule("0");
+    setNewVideoNumber("1");
+    setNewVideoTitle("");
+    setNewVideoUrl("");
+    setNewVideoDuration("");
+    setNewVideoXpReward("0");
+    setNewVideoPage("aulas");
+    setEditingVideoId(null);
+  };
+
+  const openAddVideoModal = () => {
+    resetVideoForm();
+    setShowVideoModal(true);
+  };
+
+  const openEditVideoModal = (video: VideoLesson) => {
+    setEditingVideoId(video.id);
+
+    const inferredPage =
+      video.pageLocation || (video.moduleNumber === 0 && video.lessonNumber === 0 ? "inicio" : "aulas");
+
+    setNewVideoPage(inferredPage);
+    setNewVideoModule(String(video.moduleNumber ?? 0));
+    setNewVideoNumber(String(video.lessonNumber ?? 1));
+    setNewVideoTitle(video.title || "");
+    setNewVideoUrl(video.youtubeUrl || "");
+
+    const xpReward = typeof video.xpReward === "number" ? video.xpReward : 0;
+    setNewVideoXpReward(String(xpReward));
+
+    const durationMinutes =
+      typeof video.durationMinutes === "number"
+        ? video.durationMinutes
+        : Number.parseInt(video.duration || "", 10);
+    setNewVideoDuration(Number.isFinite(durationMinutes) ? String(durationMinutes) : "");
+
+    setShowVideoModal(true);
+  };
+
+  const closeVideoModal = () => {
+    setShowVideoModal(false);
+    resetVideoForm();
+  };
+
   const handleAddVideo = async () => {
     if (newVideoTitle && newVideoUrl && newVideoDuration) {
       try {
+        const xpReward = Number.parseInt(newVideoXpReward || "0", 10);
         const videoData = {
           moduleNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoModule),
           lessonNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
@@ -344,6 +475,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           description: '',
           youtubeUrl: newVideoUrl,
           durationMinutes: parseInt(newVideoDuration),
+          xpReward: Number.isFinite(xpReward) ? xpReward : 0,
           orderIndex: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
           isPublished: false,
           pageLocation: newVideoPage
@@ -363,9 +495,13 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             title: created.title,
             youtubeUrl: created.youtubeUrl,
             duration: `${created.durationMinutes} min`,
+            durationMinutes: created.durationMinutes,
+            xpReward: typeof created.xpReward === "number" ? created.xpReward : 0,
             isPublished: created.isPublished,
             moduleNumber: created.moduleNumber,
-            lessonNumber: created.lessonNumber
+            lessonNumber: created.lessonNumber,
+            pageLocation: created.pageLocation,
+            orderIndex: created.orderIndex
           };
           setVideos([...videos, newVideo]);
         } else {
@@ -379,14 +515,80 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
         alert('Erro ao criar vídeo');
         return;
       }
-      
-      // Limpar form
-      setNewVideoModule("0");
-      setNewVideoNumber("1");
-      setNewVideoTitle("");
-      setNewVideoUrl("");
-      setNewVideoDuration("");
-      setShowVideoModal(false);
+
+      closeVideoModal();
+    }
+  };
+
+  const handleUpdateVideo = async () => {
+    if (editingVideoId === null) return;
+    if (!newVideoTitle || !newVideoUrl || !newVideoDuration) return;
+
+    const existing = videos.find((v) => v.id === editingVideoId);
+    const existingIsPublished = existing?.isPublished ?? false;
+
+    try {
+      const xpReward = Number.parseInt(newVideoXpReward || "0", 10);
+      const videoData = {
+        moduleNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoModule),
+        lessonNumber: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
+        title: newVideoTitle,
+        description: '',
+        youtubeUrl: newVideoUrl,
+        durationMinutes: parseInt(newVideoDuration),
+        xpReward: Number.isFinite(xpReward) ? xpReward : 0,
+        orderIndex: newVideoPage === "inicio" ? 0 : parseInt(newVideoNumber),
+        isPublished: existingIsPublished,
+        pageLocation: newVideoPage
+      };
+
+      const response = await fetch(`${API_BASE_URL}/videos/${editingVideoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(videoData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erro ao atualizar vídeo:', errorText);
+        alert('Erro ao atualizar vídeo. Verifique se já existe um vídeo para este módulo/aula.');
+        return;
+      }
+
+      const updated = await response.json();
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === updated.id
+            ? {
+                ...v,
+                module: `Módulo ${updated.moduleNumber} • Aula ${updated.lessonNumber}`,
+                title: updated.title,
+                youtubeUrl: updated.youtubeUrl,
+                duration: `${updated.durationMinutes} min`,
+                durationMinutes: updated.durationMinutes,
+                xpReward: typeof updated.xpReward === "number" ? updated.xpReward : 0,
+                isPublished: updated.isPublished,
+                moduleNumber: updated.moduleNumber,
+                lessonNumber: updated.lessonNumber,
+                pageLocation: updated.pageLocation,
+                orderIndex: updated.orderIndex
+              }
+            : v
+        )
+      );
+
+      closeVideoModal();
+    } catch (error) {
+      console.error('Erro ao atualizar vídeo:', error);
+      alert('Erro ao atualizar vídeo');
+    }
+  };
+
+  const handleSaveVideo = async () => {
+    if (editingVideoId !== null) {
+      await handleUpdateVideo();
+    } else {
+      await handleAddVideo();
     }
   };
 
@@ -772,8 +974,10 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               key="videos"
               videos={videos}
               onTogglePublish={toggleVideoPublish}
+              onNotifyVideo={notifyVideoPublished}
               onDeleteVideo={handleDeleteVideo}
-              onAddVideo={() => setShowVideoModal(true)}
+              onAddVideo={openAddVideoModal}
+              onEditVideo={openEditVideoModal}
             />
           )}
 
@@ -1068,7 +1272,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
       {showVideoModal && (
         <>
           <div
-            onClick={() => setShowVideoModal(false)}
+            onClick={closeVideoModal}
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
           />
           <motion.div
@@ -1083,12 +1287,16 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     <Video className="text-primary" size={20} />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-foreground">Adicionar Vídeo/Aula</h2>
-                    <p className="text-xs text-muted-foreground">Configure a nova aula do bootcamp</p>
+                    <h2 className="font-semibold text-foreground">
+                      {editingVideoId !== null ? 'Editar Vídeo/Aula' : 'Adicionar Vídeo/Aula'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {editingVideoId !== null ? 'Atualize os dados desta aula' : 'Configure a nova aula do bootcamp'}
+                    </p>
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowVideoModal(false)}
+                  onClick={closeVideoModal}
                   className="text-muted-foreground transition hover:text-foreground"
                 >
                   <X size={20} />
@@ -1193,19 +1401,34 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   />
                 </div>
 
+                <div className="mb-6">
+                  <label className="mb-2 block text-sm font-semibold text-foreground">XP por Conclusão</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newVideoXpReward}
+                    onChange={(e) => setNewVideoXpReward(e.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-primary/30 bg-input px-4 py-3 text-foreground placeholder-muted-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    XP concedido quando o aluno concluir esta aula
+                  </p>
+                </div>
+
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowVideoModal(false)}
+                    onClick={closeVideoModal}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-input bg-background px-6 py-3 font-semibold text-foreground transition hover:bg-accent"
                   >
                     Cancelar
                   </button>
                   <button
-                    onClick={handleAddVideo}
+                    onClick={handleSaveVideo}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition hover:bg-primary/90"
                   >
-                    <Plus size={18} />
-                    Adicionar Vídeo
+                    {editingVideoId !== null ? <Edit size={18} /> : <Plus size={18} />}
+                    {editingVideoId !== null ? 'Salvar alterações' : 'Adicionar Vídeo'}
                   </button>
                 </div>
               </div>
@@ -1260,7 +1483,6 @@ function DashboardSection({ totalStudents, avgProgress, activeToday, avgStreak, 
         <h1 className="mb-1 md:mb-2 text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-sm md:text-base text-muted-foreground">Visão geral do Bootcamp FLAME</p>
         </div>
-        <NotificationCenter />
       </div>
 
       {/* Cards de Estatísticas */}
@@ -1544,11 +1766,13 @@ function InvitesSection({ invites }: { invites: Invite[] }) {
   );
 }
 
-function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: { 
+function VideosSection({ videos, onTogglePublish, onNotifyVideo, onDeleteVideo, onAddVideo, onEditVideo }: { 
   videos: VideoLesson[]; 
   onTogglePublish: (id: number) => void; 
+  onNotifyVideo: (id: number) => void;
   onDeleteVideo: (id: number) => void;
   onAddVideo: () => void;
+  onEditVideo: (video: VideoLesson) => void;
 }) {
   return (
     <motion.div
@@ -1612,6 +1836,11 @@ function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: {
                     <Play size={14} className="hidden md:block" />
                     <span className="text-xs md:text-sm">{video.duration}</span>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Award size={12} className="md:hidden" />
+                    <Award size={14} className="hidden md:block" />
+                    <span className="text-xs md:text-sm">{video.xpReward ?? 0} XP</span>
+                  </div>
                   <a href={video.youtubeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs md:text-sm text-primary hover:underline">
                     <Eye size={12} className="md:hidden" />
                     <Eye size={14} className="hidden md:block" />
@@ -1632,7 +1861,24 @@ function VideosSection({ videos, onTogglePublish, onDeleteVideo, onAddVideo }: {
                 >
                   {video.isPublished ? "Despublicar" : "Publicar"}
                 </button>
-                <button className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+
+                <button
+                  onClick={() => onNotifyVideo(video.id)}
+                  disabled={!video.isPublished}
+                  className={`rounded-lg border border-border bg-card p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground ${
+                    !video.isPublished ? 'opacity-40 cursor-not-allowed hover:bg-card hover:text-muted-foreground' : ''
+                  }`}
+                  title={video.isPublished ? 'Notificar alunos' : 'Publique o vídeo para notificar'}
+                >
+                  <Bell size={16} className="md:hidden" />
+                  <Bell size={18} className="hidden md:block" />
+                </button>
+
+                <button
+                  onClick={() => onEditVideo(video)}
+                  className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  title="Editar vídeo"
+                >
                   <Edit size={16} className="md:hidden" />
                   <Edit size={18} className="hidden md:block" />
                 </button>

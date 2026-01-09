@@ -20,6 +20,8 @@ interface LevelInfo {
   current: number;
   xp: number;
   xpToNext: number;
+  xpCurrentLevelMin?: number;
+  xpCurrentLevelMax?: number;
   title: string;
 }
 
@@ -104,12 +106,17 @@ export function GamificationPanel() {
     );
   }
   
-  // Se não tem dados, mostra estado inicial
-  const level = data?.level || { current: 1, xp: 0, xpToNext: 250, title: "Iniciante" };
+  // Se não tem dados, mostra estado inicial (sem valores econômicos hardcoded)
+  const level = data?.level || { current: 1, xp: 0, xpToNext: 0, xpCurrentLevelMin: 0, xpCurrentLevelMax: 0, title: "Nível 1" };
   const badges = data?.badges || [];
   const stats = data?.stats || { totalBadges: 0, unlockedBadges: 0, totalXp: 0, streakDays: 0, lessonsCompleted: 0, studyHours: 0 };
 
-  const progressPercentage = (level.xp / level.xpToNext) * 100;
+  const currentMin = typeof level.xpCurrentLevelMin === "number" ? level.xpCurrentLevelMin : 0;
+  const nextMin = typeof level.xpToNext === "number" ? level.xpToNext : 0;
+  const denom = Math.max(1, nextMin - currentMin);
+  const progressPercentage = nextMin > currentMin
+    ? Math.max(0, Math.min(100, ((level.xp - currentMin) / denom) * 100))
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -152,7 +159,7 @@ export function GamificationPanel() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {level.xpToNext - level.xp} XP para o próximo nível
+              {Math.max(0, (level.xpToNext || 0) - (level.xp || 0))} XP para o próximo nível
             </p>
           </div>
         </div>

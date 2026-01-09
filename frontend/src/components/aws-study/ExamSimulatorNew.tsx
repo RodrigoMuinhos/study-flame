@@ -9,6 +9,9 @@ import { ExamConfig } from './ExamConfigScreen';
 import { StatisticsManager } from '@/utils/statisticsManager';
 import { ExamHistory } from '@/types/aws-study';
 import { awsExamService } from '@/services/api';
+import { useAWSStudy } from '@/contexts/AWSStudyContext';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 interface ExamSimulatorNewProps {
   config: ExamConfig;
@@ -17,6 +20,7 @@ interface ExamSimulatorNewProps {
 }
 
 export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: ExamSimulatorNewProps) {
+  const { userInfo } = useAWSStudy();
   const [shuffledQuestions, setShuffledQuestions] = useState<ExamQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +246,40 @@ export function ExamSimulatorNew({ config, onBackToConfig, onBackToDiagram }: Ex
     };
 
     StatisticsManager.addExamResult(examHistory);
+
+    // Gamificação (DB-driven): aplica regras configuradas em gamification_xp_rules
+    const cpf = userInfo?.cpf;
+    if (cpf) {
+      const percentage = (correctAnswers / totalQuestions) * 100;
+
+      fetch(`${API_BASE_URL}/gamification/student/${cpf}/actions/AWS_EXAM_CORRECT_ANSWER`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: correctAnswers })
+      }).catch(() => undefined);
+
+      if (passed) {
+        fetch(`${API_BASE_URL}/gamification/student/${cpf}/actions/AWS_EXAM_PASSED`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 1 })
+        }).catch(() => undefined);
+      }
+
+      if (percentage >= 95) {
+        fetch(`${API_BASE_URL}/gamification/student/${cpf}/actions/AWS_EXAM_EXCELLENT_95`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 1 })
+        }).catch(() => undefined);
+      } else if (percentage >= 90) {
+        fetch(`${API_BASE_URL}/gamification/student/${cpf}/actions/AWS_EXAM_EXCELLENT_90`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 1 })
+        }).catch(() => undefined);
+      }
+    }
 
     return {
       score,

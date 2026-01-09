@@ -19,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/exam-questions")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3002"})
 @Tag(name = "Exam Questions", description = "Gerenciamento de questões para simulados AWS")
 public class ExamQuestionController {
     

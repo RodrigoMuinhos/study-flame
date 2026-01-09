@@ -156,7 +156,7 @@ export function DashboardHome({ studentData, studentName }: DashboardHomeProps) 
             ))}
           </div>
           <p className="mt-4 text-center text-sm font-medium text-muted-foreground">
-            +50 XP por tarefa concluída
+            XP por tarefa concluída
           </p>
         </div>
       </div>

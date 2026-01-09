@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, TrendingUp, Clock, Award, ChevronLeft, BarChart3, Sparkles, X, CheckCircle, XCircle } from 'lucide-react';
 import { ExamResult, ExamQuestion } from '@/types/aws-study';
 import { StatisticsManager } from '@/utils/statisticsManager';
+import { useAWSStudy } from '@/contexts/AWSStudyContext';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+
+type GamificationLevelInfo = {
+  current: number;
+  xp: number;
+  xpToNext: number;
+  xpCurrentLevelMin?: number;
+  xpCurrentLevelMax?: number;
+  title: string;
+};
 
 interface ExamResultsScreenNewProps {
   result: ExamResult;
@@ -20,6 +32,8 @@ export function ExamResultsScreenNew({
 }: ExamResultsScreenNewProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<ExamQuestion | null>(null);
+  const [levelInfo, setLevelInfo] = useState<GamificationLevelInfo | null>(null);
+  const { userInfo } = useAWSStudy();
   const stats = StatisticsManager.getStats();
   
   const percentage = (result.correctAnswers / result.totalQuestions) * 100;
@@ -35,12 +49,17 @@ export function ExamResultsScreenNew({
     return `${mins}m ${secs}s`;
   };
 
-  const lastExam = stats.examHistory[0];
-  const xpGained = lastExam ? (
-    lastExam.correctAnswers * 10 +
-    (lastExam.passed ? 50 : 0) +
-    (percentage >= 90 ? 100 : percentage >= 80 ? 50 : 0)
-  ) : 0;
+  useEffect(() => {
+    const cpf = userInfo?.cpf;
+    if (!cpf) return;
+
+    fetch(`${API_BASE_URL}/gamification/student/${cpf}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.level) setLevelInfo(data.level);
+      })
+      .catch(() => undefined);
+  }, [userInfo?.cpf]);
 
   const newBadges = stats.badges.filter(b => 
     b.unlockedAt && new Date(b.unlockedAt).getTime() > (Date.now() - 10000)
@@ -232,10 +251,10 @@ export function ExamResultsScreenNew({
               ⏱️ Tempo: {formatTime(result.timeSpent)}
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
-              ⭐ +{xpGained} XP
+              ⭐ XP atualizado
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
-              🏆 Nível {stats.level}
+              🏆 Nível {levelInfo?.current ?? 1}
             </div>
           </div>
         </div>

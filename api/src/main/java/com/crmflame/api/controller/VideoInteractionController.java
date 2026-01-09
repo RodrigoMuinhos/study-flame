@@ -1,12 +1,14 @@
 package com.crmflame.api.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,16 +22,23 @@ import com.crmflame.api.dto.VideoCommentDTO;
 import com.crmflame.api.dto.VideoInteractionStatsDTO;
 import com.crmflame.api.dto.VideoProgressDTO;
 import com.crmflame.api.dto.VideoRatingDTO;
+import com.crmflame.api.model.Lead;
+import com.crmflame.api.model.GamificationXpRule;
+import com.crmflame.api.model.StudentProgress;
 import com.crmflame.api.model.VideoComment;
 import com.crmflame.api.model.VideoLesson;
 import com.crmflame.api.model.VideoLike;
 import com.crmflame.api.model.VideoRating;
 import com.crmflame.api.model.VideoWatchProgress;
 import com.crmflame.api.repository.VideoCommentRepository;
+import com.crmflame.api.repository.GamificationXpRuleRepository;
+import com.crmflame.api.repository.LeadRepository;
+import com.crmflame.api.repository.StudentProgressRepository;
 import com.crmflame.api.repository.VideoLessonRepository;
 import com.crmflame.api.repository.VideoLikeRepository;
 import com.crmflame.api.repository.VideoRatingRepository;
 import com.crmflame.api.repository.VideoWatchProgressRepository;
+import com.crmflame.api.service.GamificationService;
 
 import jakarta.transaction.Transactional;
 
@@ -37,7 +46,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/videos")
-@CrossOrigin(origins = "*")
 public class VideoInteractionController {
 
     @Autowired
@@ -54,6 +62,25 @@ public class VideoInteractionController {
 
     @Autowired
     private VideoWatchProgressRepository progressRepository;
+
+    @Autowired
+    private LeadRepository leadRepository;
+
+    @Autowired
+    private StudentProgressRepository studentProgressRepository;
+
+    @Autowired
+    private GamificationXpRuleRepository xpRuleRepository;
+
+    @Autowired
+    private GamificationService gamificationService;
+
+    private int xpForAction(String actionCode) {
+        if (actionCode == null || actionCode.isBlank()) return 0;
+        return xpRuleRepository.findByActionCodeAndIsActiveTrue(actionCode)
+                .map(GamificationXpRule::getXpAmount)
+                .orElse(0);
+    }
 
     // ========== LIKES ==========
 
@@ -76,6 +103,18 @@ public class VideoInteractionController {
             like.setStudentCpf(studentCpf);
             likeRepository.save(like);
             nowLiked = true;
+
+            // XP via DB rule (somente ao curtir, não ao descurtir)
+            int xp = xpForAction("VIDEO_LIKED");
+            if (xp > 0) {
+                gamificationService.addXp(studentCpf, xp);
+            } else {
+                touchStudentActivity(studentCpf);
+            }
+        }
+
+        if (!nowLiked) {
+            touchStudentActivity(studentCpf);
         }
 
         long totalLikes = likeRepository.countByVideoLessonId(videoId);
@@ -101,8 +140,10 @@ public class VideoInteractionController {
 
     @PostMapping("/{videoId}/comments")
     public ResponseEntity<VideoComment> addComment(@PathVariable Long videoId, @RequestBody VideoCommentDTO commentDTO) {
-        VideoLesson video = videoLessonRepository.findById(videoId)
-                .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
+        VideoLesson video = videoLessonRepository.findById(videoId).orElse(null);
+        if (video == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
         VideoComment comment = new VideoComment();
         comment.setVideoLesson(video);
@@ -111,6 +152,14 @@ public class VideoInteractionController {
         comment.setComment(commentDTO.getComment());
 
         VideoComment savedComment = commentRepository.save(comment);
+
+        // XP via DB rule
+        int xp = xpForAction("COMMENT_CREATED");
+        if (xp > 0 && commentDTO.getStudentCpf() != null) {
+            gamificationService.addXp(commentDTO.getStudentCpf(), xp);
+        } else if (commentDTO.getStudentCpf() != null) {
+            touchStudentActivity(commentDTO.getStudentCpf());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(savedComment);
     }
 
@@ -122,8 +171,11 @@ public class VideoInteractionController {
 
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, @RequestParam String studentCpf) {
-        VideoComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comentário não encontrado"));
+        VideoComment comment = commentRepository.findById(commentId).orElse(null);
+        if (comment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Comentário não encontrado"));
+        }
 
         if (!comment.getStudentCpf().equals(studentCpf)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Você não pode deletar este comentário");
@@ -137,12 +189,16 @@ public class VideoInteractionController {
 
     @PostMapping("/{videoId}/rating")
     public ResponseEntity<VideoRating> addOrUpdateRating(@PathVariable Long videoId, @RequestBody VideoRatingDTO ratingDTO) {
-        VideoLesson video = videoLessonRepository.findById(videoId)
-                .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
+        VideoLesson video = videoLessonRepository.findById(videoId).orElse(null);
+        if (video == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
-        VideoRating rating = ratingRepository
-                .findByVideoLessonIdAndStudentCpf(videoId, ratingDTO.getStudentCpf())
-                .orElse(new VideoRating());
+        Optional<VideoRating> existing = ratingRepository
+            .findByVideoLessonIdAndStudentCpf(videoId, ratingDTO.getStudentCpf());
+
+        boolean isFirstRating = existing.isEmpty();
+        VideoRating rating = existing.orElse(new VideoRating());
 
         rating.setVideoLesson(video);
         rating.setStudentCpf(ratingDTO.getStudentCpf());
@@ -151,6 +207,18 @@ public class VideoInteractionController {
         rating.setVideoQualityRating(ratingDTO.getVideoQualityRating());
 
         VideoRating savedRating = ratingRepository.save(rating);
+
+        // XP via DB rule (apenas no primeiro envio)
+        if (isFirstRating) {
+            int xp = xpForAction("RATING_SUBMITTED");
+            if (xp > 0 && ratingDTO.getStudentCpf() != null) {
+                gamificationService.addXp(ratingDTO.getStudentCpf(), xp);
+            }
+        }
+
+        if (ratingDTO.getStudentCpf() != null) {
+            touchStudentActivity(ratingDTO.getStudentCpf());
+        }
         return ResponseEntity.ok(savedRating);
     }
 
@@ -181,12 +249,20 @@ public class VideoInteractionController {
 
     @PostMapping("/{videoId}/progress")
     public ResponseEntity<VideoWatchProgress> updateProgress(@PathVariable Long videoId, @RequestBody VideoProgressDTO progressDTO) {
-        VideoLesson video = videoLessonRepository.findById(videoId)
-                .orElseThrow(() -> new RuntimeException("Vídeo não encontrado"));
+        VideoLesson video = videoLessonRepository.findById(videoId).orElse(null);
+        if (video == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        if (progressDTO.getStudentCpf() == null || progressDTO.getStudentCpf().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         VideoWatchProgress progress = progressRepository
                 .findByVideoLessonIdAndStudentCpf(videoId, progressDTO.getStudentCpf())
                 .orElse(new VideoWatchProgress());
+
+        boolean wasCompletedTrue = Boolean.TRUE.equals(progress.getCompleted());
 
         progress.setVideoLesson(video);
         progress.setStudentCpf(progressDTO.getStudentCpf());
@@ -195,7 +271,83 @@ public class VideoInteractionController {
         progress.setProgressPercentage(progressDTO.getProgressPercentage());
 
         VideoWatchProgress savedProgress = progressRepository.save(progress);
+
+        boolean nowCompletedTrue = Boolean.TRUE.equals(progressDTO.getCompleted());
+        if (!wasCompletedTrue && nowCompletedTrue) {
+            updateStudentProgressOnCompletion(progressDTO.getStudentCpf(), video);
+        } else {
+            touchStudentActivity(progressDTO.getStudentCpf());
+        }
+
         return ResponseEntity.ok(savedProgress);
+    }
+
+    private void updateStudentProgressOnCompletion(String cpf, VideoLesson video) {
+        if (cpf == null || cpf.isBlank()) return;
+
+        Optional<Lead> leadOpt = leadRepository.findByCpf(cpf);
+        if (leadOpt.isEmpty()) return;
+
+        Lead lead = leadOpt.get();
+        StudentProgress studentProgress = studentProgressRepository.findByLead(lead)
+                .orElseGet(() -> createInitialProgress(lead));
+
+        // lessons completed
+        Integer lessonsCompleted = studentProgress.getLessonsCompleted();
+        studentProgress.setLessonsCompleted((lessonsCompleted == null ? 0 : lessonsCompleted) + 1);
+
+        // XP via DB (video_lessons.xp_reward)
+        int xpReward = video != null ? Math.max(0, video.getXpReward()) : 0;
+        if (xpReward > 0) {
+            // usa o serviço para recalcular nível baseado em faixas no DB
+            gamificationService.addXp(cpf, xpReward);
+        }
+
+        // streak + last activity
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime last = studentProgress.getLastActivityDate();
+        Integer streakVal = studentProgress.getStreakDays();
+        int currentStreak = streakVal == null ? 0 : streakVal;
+
+        if (last == null) {
+            currentStreak = 1;
+        } else {
+            LocalDate lastDay = last.toLocalDate();
+            LocalDate today = now.toLocalDate();
+
+            if (lastDay.equals(today)) {
+                currentStreak = Math.max(1, currentStreak);
+            } else if (lastDay.plusDays(1).equals(today)) {
+                currentStreak = Math.max(1, currentStreak + 1);
+            } else {
+                currentStreak = 1;
+            }
+        }
+
+        studentProgress.setStreakDays(currentStreak);
+        studentProgress.setLastActivityDate(now);
+
+        studentProgressRepository.save(studentProgress);
+    }
+
+    private void touchStudentActivity(String cpf) {
+        if (cpf == null || cpf.isBlank()) return;
+
+        Optional<Lead> leadOpt = leadRepository.findByCpf(cpf);
+        if (leadOpt.isEmpty()) return;
+
+        Lead lead = leadOpt.get();
+        StudentProgress studentProgress = studentProgressRepository.findByLead(lead)
+                .orElseGet(() -> createInitialProgress(lead));
+
+        studentProgress.setLastActivityDate(LocalDateTime.now());
+        studentProgressRepository.save(studentProgress);
+    }
+
+    private StudentProgress createInitialProgress(Lead lead) {
+        StudentProgress progress = new StudentProgress();
+        progress.setLead(lead);
+        return studentProgressRepository.save(progress);
     }
 
     @GetMapping("/{videoId}/progress")
@@ -217,6 +369,10 @@ public class VideoInteractionController {
     public ResponseEntity<VideoInteractionStatsDTO> getVideoStats(
             @PathVariable Long videoId,
             @RequestParam String studentCpf) {
+
+        if (!videoLessonRepository.existsById(videoId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
         VideoInteractionStatsDTO stats = new VideoInteractionStatsDTO();
         stats.setVideoLessonId(videoId);

@@ -6,7 +6,6 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +25,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/gamification")
-@CrossOrigin(origins = "*")
 @Tag(name = "Gamification", description = "Sistema de gamificação - XP, níveis, badges e conquistas")
 public class GamificationController {
     
@@ -64,6 +62,20 @@ public class GamificationController {
             @RequestBody Map<String, Integer> body) {
         int xpAmount = body.getOrDefault("xp", 0);
         GamificationDTO data = gamificationService.addXp(cpf, xpAmount);
+        return ResponseEntity.ok(data);
+    }
+
+    @PostMapping("/student/{cpf}/actions/{actionCode}")
+    @Operation(summary = "Adicionar XP por ação", description = "Aplica uma regra de XP configurada no banco (gamification_xp_rules).")
+    public ResponseEntity<GamificationDTO> addXpByAction(
+            @Parameter(description = "CPF do aluno") @PathVariable String cpf,
+            @Parameter(description = "Código da ação (gamification_xp_rules.action_code)") @PathVariable String actionCode,
+            @RequestBody(required = false) Map<String, Integer> body) {
+        int count = 1;
+        if (body != null) {
+            count = body.getOrDefault("count", 1);
+        }
+        GamificationDTO data = gamificationService.addXpByAction(cpf, actionCode, count);
         return ResponseEntity.ok(data);
     }
     

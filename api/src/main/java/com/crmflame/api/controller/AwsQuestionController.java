@@ -20,13 +20,6 @@ import java.util.List;
 @RequestMapping("/aws-questions")
 @RequiredArgsConstructor
 @Tag(name = "AWS Quest", description = "Banco de questões por tema para AWS Quest")
-@CrossOrigin(
-        origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3002"},
-        allowedHeaders = "*",
-        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS},
-        allowCredentials = "true",
-        maxAge = 3600
-)
 public class AwsQuestionController {
 
     private final AwsQuestionThemeService service;

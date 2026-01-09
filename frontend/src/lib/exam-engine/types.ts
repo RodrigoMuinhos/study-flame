@@ -89,7 +89,9 @@ export interface ExamResult {
   score: number; // percentual 0-100
   timeSpent?: number; // segundos gastos
   questions: QuestionResult[];
-  state?: ExamState; // Estado original do exame
+
+  // Estado original (útil para review/metadata)
+  state?: ExamState;
 }
 
 /**

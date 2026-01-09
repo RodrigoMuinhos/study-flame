@@ -49,27 +49,15 @@ async function fetchRandomQuestions(params: {
   const url = new URL(`${API_BASE_URL}/exam-questions/random`);
   url.searchParams.set('count', String(params.count));
   url.searchParams.set('status', 'ACTIVE');
-  // Removido multipleChoice=false pois estava filtrando questões válidas
+  url.searchParams.set('multipleChoice', 'false');
   if (params.topic) url.searchParams.set('topic', params.topic);
   if (params.domain) url.searchParams.set('domain', params.domain);
 
-  console.log('🔍 Fetching questions from:', url.toString());
-  console.log('📋 Params:', params);
-
   const response = await fetch(url.toString());
-  console.log('📡 Response status:', response.status);
-  console.log('📡 Response ok:', response.ok);
-  
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Error response:', errorText);
     throw new Error(`Failed to fetch random questions (${response.status})`);
   }
-  
-  const data = (await response.json()) as ExamQuestionDTO[];
-  console.log(`✅ Received ${data.length} questions`);
-  console.log('📦 First question sample:', data[0]);
-  return data;
+  return (await response.json()) as ExamQuestionDTO[];
 }
 
 /**

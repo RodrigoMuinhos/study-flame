@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,7 +29,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/videos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3002"})
 @Tag(name = "Video Lessons", description = "Gerenciamento de vídeos e aulas do bootcamp")
 public class VideoLessonController {
 
@@ -56,7 +54,11 @@ public class VideoLessonController {
     })
     public ResponseEntity<VideoLessonDTO> findById(
             @Parameter(description = "ID do vídeo") @PathVariable Long id) {
-        return ResponseEntity.ok(videoLessonService.findById(id));
+        try {
+            return ResponseEntity.ok(videoLessonService.findById(id));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @GetMapping("/module/{moduleNumber}/lesson/{lessonNumber}")
@@ -69,7 +71,11 @@ public class VideoLessonController {
     public ResponseEntity<VideoLessonDTO> findByModuleAndLesson(
             @Parameter(description = "Número do módulo") @PathVariable Integer moduleNumber,
             @Parameter(description = "Número da aula") @PathVariable Integer lessonNumber) {
-        return ResponseEntity.ok(videoLessonService.findByModuleAndLesson(moduleNumber, lessonNumber));
+        try {
+            return ResponseEntity.ok(videoLessonService.findByModuleAndLesson(moduleNumber, lessonNumber));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @PostMapping
@@ -104,6 +110,25 @@ public class VideoLessonController {
     public ResponseEntity<VideoLessonDTO> togglePublish(
             @Parameter(description = "ID do vídeo") @PathVariable Long id) {
         return ResponseEntity.ok(videoLessonService.togglePublish(id));
+    }
+
+    @PostMapping("/{id}/notify")
+    @Operation(summary = "Notificar alunos sobre o vídeo", description = "Dispara uma notificação manual de novo conteúdo (apenas se estiver publicado)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Notificação disparada"),
+            @ApiResponse(responseCode = "400", description = "Vídeo não publicado"),
+            @ApiResponse(responseCode = "404", description = "Vídeo não encontrado")
+    })
+    public ResponseEntity<Void> notifyPublished(
+            @Parameter(description = "ID do vídeo") @PathVariable Long id) {
+        try {
+            videoLessonService.notifyPublished(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @DeleteMapping("/{id}")

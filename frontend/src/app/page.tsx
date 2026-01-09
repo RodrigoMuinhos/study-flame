@@ -152,7 +152,7 @@ export default function App() {
 
   // Se está logado como aluno (via AuthContext)
   if (isAuthenticated && student) {
-    return <StudentDashboard studentName={student.name} onLogout={handleStudentLogout} />;
+    return <StudentDashboard studentName={student.name} studentCpf={student.cpf} onLogout={handleStudentLogout} />;
   }
 
   // Tela de Login

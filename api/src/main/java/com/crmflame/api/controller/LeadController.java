@@ -27,13 +27,6 @@ import java.util.UUID;
 @RequestMapping("/leads")
 @RequiredArgsConstructor
 @Tag(name = "Leads", description = "Gerenciamento de leads/alunos do bootcamp")
-@CrossOrigin(
-    origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:3002"},
-    allowedHeaders = "*",
-    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS},
-    allowCredentials = "true",
-    maxAge = 3600
-)
 public class LeadController {
 
     private final LeadService leadService;

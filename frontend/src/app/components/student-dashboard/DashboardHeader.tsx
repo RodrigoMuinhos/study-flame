@@ -5,12 +5,13 @@ import { NotificationCenter } from "../ui/notification-center";
 
 interface DashboardHeaderProps {
   studentName: string | null;
+  studentCpf?: string;
   currentPhase: string;
   streak: number;
   onMenuClick: () => void;
 }
 
-export function DashboardHeader({ studentName, currentPhase, streak, onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({ studentName, studentCpf, currentPhase, streak, onMenuClick }: DashboardHeaderProps) {
   return (
     <header className="border-b border-border bg-background/70 backdrop-blur-sm">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
@@ -31,7 +32,7 @@ export function DashboardHeader({ studentName, currentPhase, streak, onMenuClick
             <Flame size={16} className="text-orange-400" />
             <span className="font-semibold text-orange-400">{streak} dias</span>
           </div>
-          <NotificationCenter />
+          <NotificationCenter studentCpf={studentCpf} />
         </div>
       </div>
     </header>
